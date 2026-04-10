@@ -3,6 +3,7 @@ import cors from "cors";
 import crypto from "crypto";
 import http from "http";
 import path from "path";
+import { WebSocketServer, WebSocket } from "ws";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 
@@ -12,6 +13,12 @@ import PDFDocument from "pdfkit";
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+// WhatsApp — loaded via nodeRequire (whatsapp-web.js is CommonJS-only)
+// These are set after nodeRequire is defined below.
+let WAClient: any;
+let LocalAuth: any;
+let MessageMedia: any;
+let qrcode: any;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +33,64 @@ try {
   console.log("[Server] boot Vitals API — Express", expressVer);
 } catch {
   console.log("[Server] boot Vitals API");
+}
+
+// ─── WhatsApp Client ──────────────────────────────────────────────────────────
+let waClient: any = null;
+let waReady = false;
+
+try {
+  // whatsapp-web.js is CommonJS — must be loaded via nodeRequire in an ES-module server
+  const wweb = nodeRequire("whatsapp-web.js");
+  qrcode = nodeRequire("qrcode-terminal");
+  WAClient = wweb.Client;
+  LocalAuth = wweb.LocalAuth;
+  MessageMedia = wweb.MessageMedia;
+
+  waClient = new WAClient({ authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }) });
+  waClient.on("qr", (qr: string) => {
+    console.log("\n[WhatsApp] ====== SCAN QR CODE =====");
+    qrcode.generate(qr, { small: true });
+    console.log("[WhatsApp] Open WhatsApp → Linked Devices → Link a Device, then scan above.");
+  });
+  waClient.on("ready", () => {
+    waReady = true;
+    console.log("[WhatsApp] ✅ Client ready — PDF reports will be auto-sent via WhatsApp.");
+  });
+  waClient.on("authenticated", () => {
+    console.log("[WhatsApp] Authenticated — loading session...");
+  });
+  waClient.on("auth_failure", (msg: string) => {
+    waReady = false;
+    console.error("[WhatsApp] ❌ Auth failed:", msg);
+  });
+  waClient.on("disconnected", (reason: string) => {
+    waReady = false;
+    console.warn("[WhatsApp] Disconnected:", reason);
+  });
+  console.log("[WhatsApp] Initializing (Puppeteer/Chromium starting — may take 30-60s on first run)...");
+  waClient.initialize().catch((e: any) => {
+    console.error("[WhatsApp] initialize() threw:", e?.message || e);
+  });
+} catch (waInitErr: any) {
+  console.error("[WhatsApp] ❌ Init failed (non-fatal):", waInitErr?.message || waInitErr);
+  console.warn("[WhatsApp] WhatsApp PDF delivery disabled. Manual 'Send on WhatsApp' button will return 503.");
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const wsClients = new Set<WebSocket>();
+
+export function broadcastReport(callId: string, vitalsData: any) {
+  const payloadInfo = JSON.stringify({
+    type: "REPORT_GENERATED",
+    callId,
+    vitals_data: vitalsData 
+  });
+  for (const client of wsClients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payloadInfo);
+    }
+  }
 }
 
 const app = express();
@@ -110,6 +175,52 @@ function parseJsonFromModelText(text: string): any {
   return JSON.parse(rawJson.trim());
 }
 
+function parseFutureDate(minDaysOut: number, maxDaysOut: number) {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  const now = new Date();
+  const candidates: Date[] = [];
+  let d = new Date(now);
+  d.setDate(d.getDate() + 1); // start tomorrow
+  
+  // Collect working days
+  const workingDays: Date[] = [];
+  while (workingDays.length < maxDaysOut) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5) workingDays.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Filter based on min/max indices
+  const validCandidates = workingDays.slice(minDaysOut - 1, maxDaysOut);
+  const chosen = validCandidates[Math.floor(Math.random() * validCandidates.length)] || workingDays[0];
+
+  const halfHours = [0, 30];
+  const hour = 16 + Math.floor(Math.random() * 4); // 16, 17, 18, 19
+  const minute = halfHours[Math.floor(Math.random() * 2)];
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour > 12 ? hour - 12 : hour;
+  const timeStr = `${hour12}:${minute.toString().padStart(2, "0")} ${ampm}`;
+
+  const dateStr = `${days[chosen.getDay()]}, ${months[chosen.getMonth()]} ${chosen.getDate()}, ${chosen.getFullYear()}`;
+  chosen.setHours(hour, minute, 0, 0);
+
+  return {
+    date: dateStr,
+    time: timeStr,
+    isoDate: chosen.toISOString(),
+    dayOfWeek: days[chosen.getDay()],
+  };
+}
+
+function generateSchedules() {
+  return {
+    follow_up_call: parseFutureDate(1, 2), // 1-2 days out
+    appointment: parseFutureDate(3, 5),    // 3-5 days out
+  };
+}
+
 type ReportData = {
   summary: string;
   diagnosis: string;
@@ -126,6 +237,14 @@ type ReportData = {
   differential_diagnosis: string[];
   /** Structured follow-up plan */
   follow_up_plan: string;
+  /** Auto-scheduled follow-up appointment (Mon-Fri, 4-8 PM) */
+  appointment?: {
+    date: string; time: string; isoDate: string; dayOfWeek: string;
+  };
+  /** Auto-scheduled AI follow-up phone call */
+  follow_up_call?: {
+    date: string; time: string; isoDate: string; dayOfWeek: string;
+  };
 };
 
 async function authenticateRequest(accessToken: string) {
@@ -407,6 +526,31 @@ function generateReportPdfBuffer(input: {
       doc.moveDown(0.25);
       writeParagraph(doc, input.report.action_required, 10);
 
+      // ── Scheduled follow-up appointment & call ─────────────────────────────────────────────
+      if (input.report.appointment || input.report.follow_up_call) {
+        doc.moveDown(0.4);
+        doc.fontSize(12).fillColor("#003366").text("Scheduling & Follow-ups", { underline: true });
+        doc.fillColor("black");
+        doc.moveDown(0.25);
+        
+        if (input.report.appointment) {
+          const appt = input.report.appointment;
+          doc.fontSize(11).font("Helvetica-Bold").text("Clinic Appointment:");
+          doc.font("Helvetica").text(`📅  ${appt.date}   |   🕐  ${appt.time}`);
+          doc.fontSize(9).fillColor("#555555").text("Please arrive 10 minutes early. Bring your medication list and any recent lab results.");
+          doc.fillColor("black").moveDown(0.3);
+        }
+
+        if (input.report.follow_up_call) {
+          const callSched = input.report.follow_up_call;
+          doc.fontSize(11).font("Helvetica-Bold").text("Next AI Follow-up Call:");
+          doc.font("Helvetica").text(`📞  ${callSched.date}   |   🕐  ${callSched.time}`);
+          doc.fontSize(9).fillColor("#555555").text("You will receive an automated check-in call directly to your registered phone number.");
+          doc.fillColor("black").moveDown(0.3);
+        }
+        doc.moveDown(0.5);
+      }
+
       if (input.transcriptSnippet) {
         doc.addPage();
         doc.fontSize(12).text("Call transcript (excerpt)", { underline: true });
@@ -478,48 +622,45 @@ ${rawTranscript}`;
  * This is a more detailed version of generateDoctorSummaryServer, designed for on-demand
  * report generation from the CallDetail page.
  */
-async function generateStructuredReport(cleanedTranscript: string, patientChartJson: string) {
+async function generateStructuredReport(cleanedTranscript: string, patientChartJson: string, userPrompt?: string) {
   const geminiApiKey =
     process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
   if (!geminiApiKey) throw new Error("Missing Gemini API key env var");
   const genAI = new GoogleGenerativeAI(geminiApiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const prompt = `You are an expert clinical documentation specialist generating a structured medical report from a voice call between an AI health agent and a patient.
+  let prompt = `You are a clinical documentation AI. Generate a precise, concise medical report from the call below. Be brief and factual — clinicians are busy.
 
-## Inputs
-
-Patient chart (may be partial):
+Patient chart:
 ${patientChartJson || "{}"}
 
-Cleaned call transcript:
+Call transcript:
 ${cleanedTranscript}
 
-## Instructions
+RULES:
+- Only include findings the PATIENT explicitly stated. Do not invent.
+- Be concise: maximum 2 sentences per text field.
+- Symptoms must be concrete patient-reported items only.
+- Use standard clinical terminology.
 
-Analyze BOTH the patient chart and the cleaned transcript thoroughly. Generate a comprehensive, well-structured clinical report.
-
-CRITICAL RULES:
-- Every symptom MUST be directly traceable to something the PATIENT said in the transcript.
-- Do NOT invent symptoms or findings not mentioned by the patient.
-- If the transcript is empty or contains no patient dialogue, say so explicitly.
-- All clinical reasoning must reference specific patient statements.
-- Use professional medical terminology appropriate for a licensed clinician's review.
-
-Output ONLY a JSON object with this exact shape (no markdown outside JSON):
+Output ONLY a JSON object (no markdown wrapper):
 {
-  "summary": "3-5 sentence comprehensive clinical summary. Include: reason for call, key findings, and current patient status. Written as a professional handoff note.",
-  "relevant_history": "Prior conditions, medications, allergies, and relevant history from the chart. Cross-reference with what the patient mentioned about their history during the call. Note any discrepancies.",
-  "diagnosis": "Working clinical impression based on the transcript and chart data. State confidence level (strong suspicion / possible / unlikely but consider). This is NOT a definitive diagnosis.",
-  "clinical_reasoning": "4-8 sentences of structured reasoning: (1) What symptoms point toward this impression, (2) What from the chart supports it, (3) What contradicts or complicates it, (4) Red flags or concerning patterns. Reference specific patient statements.",
-  "differential_diagnosis": ["Differential 1 with brief rationale", "Differential 2 with brief rationale", "Differential 3 if applicable"],
+  "summary": "1-2 sentence handoff note: chief complaint + key finding + current status.",
+  "relevant_history": "1-2 sentences: relevant chart conditions + anything the patient mentioned about their history.",
+  "diagnosis": "Working impression in ≤1 sentence (not a definitive diagnosis).",
+  "clinical_reasoning": "2-3 sentences: key evidence for impression + any contradicting factor + top red flag if present.",
+  "differential_diagnosis": ["Alt 1 — one-line rationale", "Alt 2 — one-line rationale"],
   "risk_level": "high" | "medium" | "low",
-  "alert_type": "Specific triage classification (e.g., 'Acute chest pain — rule out ACS', 'Routine diabetes follow-up — well controlled', 'Medication non-compliance — moderate risk')",
-  "symptoms": ["Each symptom as a concise clinical bullet. Format: 'Symptom — patient stated: [brief quote or paraphrase]'. Must be grounded in transcript."],
-  "vitals_data": {"Include any vitals or measurements the patient reported during the call, e.g. BP, HR, glucose, temperature, weight. Use standard clinical keys."},
-  "action_required": "Specific, actionable next steps for the care team. Include: (1) Immediate actions, (2) Tests or labs to order, (3) Medication changes if indicated, (4) Referrals needed.",
-  "follow_up_plan": "Structured plan: (1) Follow-up timeline, (2) What to monitor, (3) Patient education points discussed or needed, (4) Escalation criteria — when to seek emergency care."
+  "alert_type": "Short triage label, e.g. 'Uncontrolled hypertension' or 'Routine diabetic check — stable'",
+  "symptoms": ["Symptom — patient said: \"brief quote\""],
+  "vitals_data": { "BP": "120/80", "HR": "72" },
+  "action_required": "1-2 specific next steps for the care team.",
+  "follow_up_plan": "1-2 sentences: timeline + escalation trigger."
 }`;
+
+  if (userPrompt && userPrompt.trim() !== "") {
+    prompt += `\n\nCRITICAL OVERRIDE INSTRUCTIONS FROM THE DOCTOR:\nThe doctor has requested the following specific changes to the report formatting or content:\n"${userPrompt}"\nYou absolutely MUST obey these instructions during this generation phase, overwriting any defaults if necessary.\n`;
+  }
 
   const result = await model.generateContent(prompt);
   return parseJsonFromModelText(result.response.text());
@@ -532,47 +673,68 @@ async function generateDoctorSummaryServer(transcript: string, patientChartJson:
   if (!geminiApiKey) throw new Error("Missing Gemini API key env var");
   const genAI = new GoogleGenerativeAI(geminiApiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const prompt = `You are documenting a phone check-in for a licensed clinician. Use BOTH the patient chart snippet and the call transcript.
+  const prompt = `You are documenting a phone check-in for a licensed clinician. Be precise and concise — no fluff.
 
-Patient chart (may be partial JSON):
+Patient chart:
 ${patientChartJson || "{}"}
 
 Call transcript:
 ${transcript}
 
-Output ONLY a JSON object with this exact shape (no markdown outside JSON):
+RULES:
+- Only report what the patient actually said. Do not invent.
+- Keep every text field to 1-2 sentences maximum.
+- Symptoms must map directly to patient statements.
+
+Output ONLY a JSON object (no markdown wrapper):
 {
-  "summary": "2-4 sentence clinical summary suitable for a handoff note.",
-  "relevant_history": "Relevant chronic conditions, prior context from chart + what the patient said about history in the call.",
-  "diagnosis": "Working clinical impression for chart review — not a definitive diagnosis.",
-  "clinical_reasoning": "2-5 sentences: why this impression, what supports/contradicts it from transcript+chart.",
-  "differential_diagnosis": ["Optional alternative 1", "Optional alternative 2"],
+  "summary": "1-2 sentence handoff note: chief complaint + status.",
+  "relevant_history": "1 sentence: key chronic conditions or relevant chart context.",
+  "diagnosis": "≤1 sentence working impression (not definitive).",
+  "clinical_reasoning": "2 sentences: main evidence + one contradicting factor or red flag.",
+  "differential_diagnosis": ["Alt 1", "Alt 2"],
   "risk_level": "high" | "medium" | "low",
-  "alert_type": "Concise triage title (e.g. Hyperglycemia concern, Routine follow-up clear)",
-  "symptoms": ["Short clinical-style symptom bullets. Each MUST reflect what the PATIENT actually said in the transcript (user/patient/customer lines). Do not invent findings not spoken by the patient. If the transcript is empty, use one entry: \"No transcript text — verify recording/transcript settings in Vapi.\""],
-  "vitals_data": { "optional_key": "optional_value" },
-  "action_required": "What the doctor or care team should do next (specific).",
-  "follow_up_plan": "Follow-up timing, monitoring, education, or escalation guidance."
+  "alert_type": "Short triage label, e.g. 'Chest pain — rule out ACS' or 'Stable diabetic check-in'",
+  "symptoms": ["Symptom — patient said: \"brief quote\""],
+  "vitals_data": { "BP": "120/80" },
+  "action_required": "1-2 specific next steps.",
+  "follow_up_plan": "1 sentence: follow-up timeline + when to escalate."
 }`;
   const result = await model.generateContent(prompt);
   return parseJsonFromModelText(result.response.text());
 }
 
+function safeString(val: any): string {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val.trim();
+  if (typeof val === "number") return val.toString();
+  if (Array.isArray(val)) return val.map(item => safeString(item)).join(", ");
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return "[Object]";
+    }
+  }
+  return String(val);
+}
+
 function normalizeReportData(raw: any): ReportData {
+  const d = raw || {};
   return {
-    summary: String(raw.summary || ""),
-    diagnosis: String(raw.diagnosis || ""),
-    risk_level: String(raw.risk_level || "medium"),
-    alert_type: String(raw.alert_type || ""),
-    symptoms: Array.isArray(raw.symptoms) ? raw.symptoms.map(String) : [],
-    vitals_data: (raw.vitals_data || {}) as Record<string, any>,
-    action_required: String(raw.action_required || ""),
-    relevant_history: String(raw.relevant_history || ""),
-    clinical_reasoning: String(raw.clinical_reasoning || ""),
-    differential_diagnosis: Array.isArray(raw.differential_diagnosis)
-      ? raw.differential_diagnosis.map(String)
+    summary: safeString(d.summary || ""),
+    diagnosis: safeString(d.diagnosis || ""),
+    risk_level: safeString(d.risk_level || "medium").toLowerCase(),
+    alert_type: safeString(d.alert_type || ""),
+    symptoms: Array.isArray(d.symptoms) ? d.symptoms.map(safeString) : [],
+    vitals_data: (d.vitals_data || {}) as Record<string, any>,
+    action_required: safeString(d.action_required || ""),
+    relevant_history: safeString(d.relevant_history || ""),
+    clinical_reasoning: safeString(d.clinical_reasoning || ""),
+    differential_diagnosis: Array.isArray(d.differential_diagnosis)
+      ? d.differential_diagnosis.map(safeString)
       : [],
-    follow_up_plan: String(raw.follow_up_plan || ""),
+    follow_up_plan: safeString(d.follow_up_plan || ""),
   };
 }
 
@@ -607,7 +769,48 @@ function effectiveCallTranscript(call: { transcript?: string | null; vitals_data
   return String(call.vitals_data?.CallTranscript || "").trim();
 }
 
+/**
+ * Send a PDF buffer as a WhatsApp document message.
+ * @param toNumber  E.164 phone number, e.g. "+917982404800"
+ * @param pdfBuffer Raw PDF bytes
+ * @param filename  Filename shown to the recipient
+ * @param caption   Caption / text message to accompany the file
+ */
+async function sendWhatsappPdf(
+  toNumber: string,
+  pdfBuffer: Buffer,
+  filename: string,
+  caption: string,
+): Promise<void> {
+  if (!waReady || !waClient) {
+    console.warn("[WhatsApp] Client not ready — skipping PDF send to", toNumber);
+    return;
+  }
+  // WhatsApp expects number without spaces/dashes, with country code, no "+"
+  const chatId = toNumber.replace(/\s+/g, "").replace(/^\+/, "") + "@c.us";
+  const base64Data = pdfBuffer.toString("base64");
+  const media = new MessageMedia("application/pdf", base64Data, filename);
+  await waClient.sendMessage(chatId, media, { caption });
+  console.log("[WhatsApp] ✅ PDF sent to", chatId);
+}
+
+/**
+ * Send a separate distinct text message via WhatsApp.
+ * @param toNumber E.164 phone number
+ * @param message String message to send
+ */
+async function sendWhatsappText(
+  toNumber: string,
+  message: string,
+): Promise<void> {
+  if (!waReady || !waClient) return;
+  const chatId = toNumber.replace(/\s+/g, "").replace(/^\+/, "") + "@c.us";
+  await waClient.sendMessage(chatId, message);
+  console.log("[WhatsApp] ✅ Text sent to", chatId);
+}
+
 async function persistCallAndAlertAfterAnalysis(input: {
+
   supabase: any;
   docuuid: string;
   patient_id: string;
@@ -687,6 +890,18 @@ async function persistCallAndAlertAfterAnalysis(input: {
       vitals_data.ReportPdfPath = uploadPath;
       vitals_data.PdfStoredInStorage = true;
       console.log("[CallPersist] PDF uploaded:", uploadPath);
+      // ── WhatsApp: send PDF to patient's registered number ──
+      if (waReady && waClient && patientRow?.phone_number) {
+        sendWhatsappPdf(
+          patientRow.phone_number,
+          pdfBuffer,
+          `${patientRow.name || "Patient"} — Clinical Report`,
+          `*Vitals AI Report* for ${patientRow.name || "your patient"}\n` +
+          `Risk: *${reportData.risk_level?.toUpperCase() || "N/A"}* | ${reportData.alert_type || ""}\n` +
+          `Summary: ${reportData.summary || "See attached PDF."}`,
+        ).catch((e: any) => console.error("[WhatsApp] send failed:", e?.message || e));
+      }
+      // ─────────────────────────────────────────────────────
     } else {
       vitals_data.PdfStoredInStorage = false;
       vitals_data.PdfStorageError = uploadErr.message;
@@ -727,12 +942,119 @@ async function persistCallAndAlertAfterAnalysis(input: {
   if (alertErr) console.error("[CallPersist] alert insert failed:", alertErr);
 
   console.log("[CallPersist] stored call for patient:", patient_id, "db id:", inserted?.id);
+  
+  // Broadcast the newly created call report via WebSocket
+  if (inserted?.id) {
+    broadcastReport(inserted.id, reportData);
+  }
+  
   return { ok: true as const, callId: inserted?.id as string };
 }
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/api/ping", (_req, res) => res.json({ ok: true, service: "vitals-api" }));
+
+app.get("/api/whatsapp/status", (_req, res) => {
+  res.json({ ready: waReady, initialized: waClient !== null });
+});
+
+/** POST /api/whatsapp/send-report/:callId
+ *  Manually send a call's PDF report to the patient's WhatsApp number. */
+app.post("/api/whatsapp/send-report/:callId", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const auth = await authenticateRequest(token);
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
+
+    const { callId } = req.params;
+    const { supabase } = auth;
+
+    // Fetch the call
+    const { data: call, error: callErr } = await supabase
+      .from("calls")
+      .select("id, patient_id, vitals_data, docuuid, duration_seconds, transcript")
+      .eq("id", callId)
+      .single();
+
+    if (callErr || !call) {
+      return res.status(404).json({ error: "Call not found" });
+    }
+
+    // Fetch patient with phone_number
+    const { data: patient } = await supabase
+      .from("patients")
+      .select("id, name, phone_number, condition")
+      .eq("id", call.patient_id)
+      .single();
+
+    if (!patient?.phone_number) {
+      return res.status(400).json({
+        error: "Patient has no phone_number registered. Add it in the patients table first.",
+      });
+    }
+
+    if (!waReady || !waClient) {
+      return res.status(503).json({
+        error: "WhatsApp client is not ready. Check server terminal — you may need to scan the QR code.",
+      });
+    }
+
+    // Dynamically generate the PDF using the exact same logic as download
+    const reportRaw = call.vitals_data?.ReportData || null;
+    const report = reportRaw ? normalizeReportData(reportRaw) : null;
+    if (!report) {
+      return res.status(400).json({ error: "No AI Report data available for this call." });
+    }
+
+    const patientName = String(call.vitals_data?.PatientName || patient.name || "Unknown");
+    const patientCondition = String(call.vitals_data?.PatientCondition || patient.condition || "N/A");
+    const patientAge = String(call.vitals_data?.PatientAge || "");
+    const doctorOnFile = String(call.vitals_data?.DoctorEmail || "").trim();
+
+    const pdfBuffer = await generateReportPdfBuffer({
+      callId: String(call.id),
+      patientName,
+      patientCondition,
+      patientAge,
+      durationSeconds: Number(call.duration_seconds || 0),
+      transcriptSnippet: effectiveCallTranscript(call),
+      report,
+      doctorEmail: doctorOnFile || undefined,
+    });
+    const summary = String(call.vitals_data?.Summary || "See attached report.");
+    const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
+    const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
+
+    let scheduleText = "";
+    const appt = report?.appointment || call.vitals_data?.Appointment;
+    if (appt) {
+      scheduleText += `\n\n📅 *Clinic Appointment Scheduled*:\nDate: ${appt.date}\nTime: ${appt.time}\nPlease arrive 10 minutes early at the clinic.`;
+    }
+    
+    const followCall = report?.follow_up_call || call.vitals_data?.FollowUpCall;
+    if (followCall) {
+      scheduleText += `\n\n📞 *Next AI Follow-up Call*:\nDate: ${followCall.date}\nTime: ${followCall.time}\nYou will receive an automated check-in call directly to your registered phone number.`;
+    }
+
+    // 1. Send the Report PDF with schedule details in the description
+    await sendWhatsappPdf(
+      patient.phone_number,
+      pdfBuffer,
+      `${patient.name || "Patient"} — Clinical Report.pdf`,
+      `*Vitals AI Report* for ${patient.name || "Patient"}\n` +
+      (riskLevel ? `Risk: *${riskLevel}* | ${alertType}\n` : "") +
+      `Summary: ${summary}` + scheduleText
+    );
+
+    return res.json({ ok: true, sentTo: patient.phone_number });
+  } catch (e: any) {
+    console.error("[WhatsApp] manual send error:", e);
+    return res.status(500).json({ error: e?.message || "Internal error" });
+  }
+});
+
 
 app.get("/api/debug/vapi-config", (_req, res) => {
   const phoneNumberId = process.env.VAPI_PHONE_NUMBER_ID || "";
@@ -1394,6 +1716,7 @@ app.post("/api/calls/:callId/generate-report", async (req, res) => {
 
     // 2. Resolve transcript: prefer body.transcript (frontend already has it) → stored in DB
     const bodyTranscript = String((req.body as any)?.transcript || "").trim();
+    const userPrompt = String((req.body as any)?.userPrompt || "").trim();
     let rawTranscript = bodyTranscript || effectiveCallTranscript(call);
 
     // If still empty, try fetching live from Vapi
@@ -1443,17 +1766,23 @@ app.post("/api/calls/:callId/generate-report", async (req, res) => {
     );
 
     // 5. Step 2 — Generate the structured clinical report from cleaned transcript
-    const reportRaw = await generateStructuredReport(cleanedTranscript, chartJson);
+    const reportRaw = await generateStructuredReport(cleanedTranscript, chartJson, userPrompt);
     const report = normalizeReportData(reportRaw);
     const symptoms = mergeSymptomsFromTranscript(report.symptoms, cleanedTranscript);
 
     console.log("[GenerateReport] report generated | risk:", report.risk_level, "| symptoms:", symptoms.length);
 
+    // 5.5 Generate appointment and follow up schedules
+    const schedules = generateSchedules();
+    const appointment = schedules.appointment;
+    const follow_up_call = schedules.follow_up_call;
+    console.log("[GenerateReport] appointment scheduled:", appointment.date, "| follow up call:", follow_up_call.date);
+
     // 6. Persist the cleaned transcript + new report into vitals_data
     const updatedVitals = {
       ...(call.vitals_data || {}),
       CleanedTranscript: cleanedTranscript,
-      ReportData: { ...report, symptoms },
+      ReportData: { ...report, symptoms, appointment, follow_up_call },
       Summary: report.summary,
       Diagnosis: report.diagnosis,
       Symptoms: symptoms,
@@ -1462,6 +1791,8 @@ app.post("/api/calls/:callId/generate-report", async (req, res) => {
       DifferentialDiagnosis: report.differential_diagnosis,
       FollowUpPlan: report.follow_up_plan,
       ActionRequired: report.action_required,
+      Appointment: appointment,
+      FollowUpCall: follow_up_call,
       ReportGeneratedAt: new Date().toISOString(),
       ReportPipeline: "clean-then-generate",
     };
@@ -1504,12 +1835,15 @@ app.post("/api/calls/:callId/generate-report", async (req, res) => {
       }
     }
 
+    // Broadcast the generated report to any external applications via WebSocket
+    broadcastReport(call.id, updatedVitals);
+
     console.log("[GenerateReport] done for call:", callId);
 
     return res.json({
       ok: true,
       cleanedTranscript,
-      report: { ...report, symptoms },
+      report: { ...report, symptoms, appointment, follow_up_call },
     });
   } catch (e: any) {
     console.error("[GenerateReport] error:", e);
@@ -1632,6 +1966,14 @@ app.use((req, res) => {
 });
 
 const server = http.createServer(app);
+
+const wss = new WebSocketServer({ server, path: "/api/ws" });
+wss.on("connection", (ws) => {
+  console.log("[WebSocket] Client connected for report exports.");
+  wsClients.add(ws);
+  ws.on("close", () => wsClients.delete(ws));
+  ws.on("error", () => wsClients.delete(ws));
+});
 
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {

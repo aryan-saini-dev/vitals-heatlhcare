@@ -5,6 +5,8 @@ import { apiUrl } from "@/lib/api";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import { safeRender } from "@/lib/renderUtils";
+
 
 export default function Alerts() {
   const { user, session, isLoading: authLoading } = useAuth();
@@ -179,10 +181,10 @@ export default function Alerts() {
                     {alert.call && (
                       <div className="mt-3 space-y-1">
                         <p className={`text-xs font-semibold ${isValidHigh ? 'text-white/90' : 'text-muted-foreground'}`}>
-                          Summary: {alert.call.vitals_data?.Summary || "N/A"}
+                          Summary: {safeRender(alert.call.vitals_data?.Summary || "N/A")}
                         </p>
                         <p className={`text-xs font-semibold ${isValidHigh ? 'text-white/90' : 'text-muted-foreground'}`}>
-                          Diagnosis: {alert.call.vitals_data?.Diagnosis || "N/A"}
+                          Diagnosis: {safeRender(alert.call.vitals_data?.Diagnosis || "N/A")}
                         </p>
                       </div>
                     )}

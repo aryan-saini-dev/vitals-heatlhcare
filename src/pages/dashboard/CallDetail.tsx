@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { apiUrl } from "@/lib/api";
-import { ArrowLeft, Phone, Activity, Heart, Wind, Stethoscope, RefreshCw, FileText, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Phone, Activity, Heart, Wind, Stethoscope, RefreshCw, FileText, Sparkles, Loader2, MessageSquare, Mic, MicOff } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+
+import { safeRender } from "@/lib/renderUtils";
+
 
 /** Split stored transcript into display blocks (handles `user:` / `assistant:` as well as Agent:/Patient:). */
 function transcriptToDisplayBlocks(text: string): string[] {
@@ -45,6 +51,46 @@ export default function CallDetail() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<any>(null);
   const [cleanedTranscript, setCleanedTranscript] = useState<string | null>(null);
+
+  const [waSending, setWaSending] = useState(false);
+  const [waStatus, setWaStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [regeneratePrompt, setRegeneratePrompt] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  function toggleListening() {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech Recognition API is not supported in this browser.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onresult = (event: any) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+      }
+      if (finalTranscript) {
+        setRegeneratePrompt((prev) => (prev + " " + finalTranscript.trim()).trim() + " ");
+      }
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -122,6 +168,7 @@ export default function CallDetail() {
       "PatientAge","VapiCallId","ReportPdfPath","PdfStoredInStorage","PdfStorageError",
       "PdfGenerationError","PdfGeneratedAt","DoctorDecision","DoctorDecisionAt","DoctorEmail",
       "CallTranscript","RiskLevel","AlertType","ReportPipeline","CleanedTranscript","ReportGeneratedAt",
+      "Appointment",
     ].includes(key)) return false;
     if (value !== null && typeof value === "object") return false;
     return true;
@@ -157,6 +204,11 @@ export default function CallDetail() {
   }
 
   async function generateReport() {
+    setIsRegenerateModalOpen(false); // Close modal automatically
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
     if (!session || !id) return;
     setReportGenerating(true);
     setReportError(null);
@@ -164,7 +216,7 @@ export default function CallDetail() {
       const resp = await fetch(apiUrl(`/api/calls/${encodeURIComponent(id)}/generate-report`), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ transcript: transcriptText }),
+        body: JSON.stringify({ transcript: transcriptText, userPrompt: regeneratePrompt }),
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) { setReportError(data.error || "Report generation failed"); return; }
@@ -184,6 +236,7 @@ export default function CallDetail() {
           DifferentialDiagnosis: data.report?.differential_diagnosis,
           FollowUpPlan: data.report?.follow_up_plan,
           ActionRequired: data.report?.action_required,
+          Appointment: data.report?.appointment,
           RiskLevel: data.report?.risk_level,
           AlertType: data.report?.alert_type,
           CleanedTranscript: data.cleanedTranscript,
@@ -202,12 +255,79 @@ export default function CallDetail() {
   void cleanedTranscript;
   void generatedReport;
 
+  async function sendOnWhatsApp() {
+    if (!session || !id) return;
+    setWaSending(true);
+    setWaStatus(null);
+    try {
+      const resp = await fetch(apiUrl(`/api/whatsapp/send-report/${encodeURIComponent(id)}`), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) {
+        setWaStatus({ type: "success", msg: `✅ Report sent to ${data.sentTo || "patient's WhatsApp"}` });
+      } else {
+        setWaStatus({ type: "error", msg: data.error || "Failed to send" });
+      }
+    } catch (e: any) {
+      setWaStatus({ type: "error", msg: e?.message || "Network error" });
+    } finally {
+      setWaSending(false);
+    }
+  }
+
+
   // ─────────────────────────────────────────────
   // Panel height — consistent across all 3 panels
   const panelStyle = { height: "clamp(420px, 62vh, 800px)" } as const;
 
   return (
     <div className="space-y-6">
+      <Dialog open={isRegenerateModalOpen} onOpenChange={(open) => {
+        setIsRegenerateModalOpen(open);
+        if (!open && isListening && recognitionRef.current) {
+          recognitionRef.current.stop();
+          setIsListening(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-violet-500" />
+              Customize AI Report Regeneration
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Provide specific instructions on what the AI should change or format differently in the updated report.
+            </p>
+            <div className="relative">
+              <Textarea 
+                placeholder="e.g. 'Add that the patient also complained of severe headaches' or 'Translate the summary into Spanish'"
+                className="min-h-[120px] pr-12 focus-visible:ring-violet-500"
+                value={regeneratePrompt}
+                onChange={(e) => setRegeneratePrompt(e.target.value)}
+              />
+              <button 
+                type="button"
+                onClick={toggleListening}
+                className={`absolute bottom-3 right-3 p-2 rounded-full transition-colors ${isListening ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-muted hover:bg-muted-foreground/10 text-muted-foreground'}`}
+                title={isListening ? "Stop listening" : "Start Voice Typing"}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRegenerateModalOpen(false)}>Cancel</Button>
+            <Button onClick={generateReport} className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
+              <RefreshCw className="w-4 h-4" /> Apply & Regenerate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Link
         to="/dashboard/calls"
         className="inline-flex items-center text-muted-foreground hover:text-foreground font-bold transition-colors text-sm"
@@ -273,11 +393,35 @@ export default function CallDetail() {
               ⚠ {reportError}
             </p>
           )}
+          <button
+            type="button"
+            id="send-whatsapp-btn"
+            onClick={sendOnWhatsApp}
+            disabled={waSending}
+            className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-green-100 hover:bg-green-200 text-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Send the PDF report to the patient's WhatsApp number"
+          >
+            <span className="inline-flex items-center gap-1">
+              {waSending
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                : <><MessageSquare className="w-3.5 h-3.5" /> Send on WhatsApp</>}
+            </span>
+          </button>
+          {waStatus && (
+            <p className={`w-full text-xs font-bold mt-1 border rounded px-3 py-2 ${
+              waStatus.type === "success"
+                ? "text-green-700 bg-green-50 border-green-200"
+                : "text-rose-600 bg-rose-50 border-rose-200"
+            }`}>
+              {waStatus.msg}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ── Bottom Row: 3 equal-height scrollable panels ─────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+      {/* ── Bottom Row: 2 equal-height scrollable panels ─────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
         {/* ─── Panel 1: AI Clinical Report ─── */}
         <div className="bg-card border-2 border-border shadow-soft rounded-xl flex flex-col" style={panelStyle}>
@@ -293,6 +437,15 @@ export default function CallDetail() {
                     <Sparkles className="w-3 h-3" /> Processed
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setIsRegenerateModalOpen(true)}
+                  disabled={reportGenerating || !transcriptText || !hasAiNarrative}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border border-border bg-violet-100 hover:bg-violet-200 text-violet-800 transition-colors disabled:opacity-50"
+                  title="Modify the report with custom AI instructions"
+                >
+                  <MessageSquare className="w-3 h-3" /> Edit
+                </button>
                 <button
                   type="button"
                   onClick={generateReport}
@@ -333,7 +486,7 @@ export default function CallDetail() {
                 ].map(({ label, val, bold }) => (
                   <div key={label} className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
-                    <p className={`text-sm leading-relaxed ${bold ? "font-semibold" : ""}`}>{val || "N/A"}</p>
+                    <p className={`text-sm leading-relaxed ${bold ? "font-semibold" : ""}`}>{safeRender(val)}</p>
                   </div>
                 ))}
 
@@ -341,8 +494,8 @@ export default function CallDetail() {
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Differential Diagnosis</p>
                     <ul className="list-disc list-inside text-sm space-y-1">
-                      {(report?.differential_diagnosis || vitals.DifferentialDiagnosis || []).map((d: string, i: number) => (
-                        <li key={i}>{d}</li>
+                      {(report?.differential_diagnosis || vitals.DifferentialDiagnosis || []).map((d: any, i: number) => (
+                        <li key={i}>{safeRender(d)}</li>
                       ))}
                     </ul>
                   </div>
@@ -357,11 +510,13 @@ export default function CallDetail() {
                         : "bg-emerald-50 border-emerald-200 text-emerald-800"
                   }`}>
                     <p className="text-xs font-bold uppercase tracking-widest opacity-70 mb-1">Risk Level</p>
-                    <p className="text-sm font-extrabold uppercase">{report?.risk_level || vitals.RiskLevel || "N/A"}</p>
+                    <p className="text-sm font-extrabold uppercase">{safeRender(report?.risk_level || vitals.RiskLevel)}</p>
+
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Alert Focus</p>
-                    <p className="text-sm font-semibold">{report?.alert_type || vitals.AlertType || "N/A"}</p>
+                    <p className="text-sm font-semibold">{safeRender(report?.alert_type || vitals.AlertType)}</p>
+
                   </div>
                 </div>
 
@@ -370,19 +525,54 @@ export default function CallDetail() {
                   {(() => {
                     const s = report?.symptoms ?? vitals.Symptoms;
                     if (Array.isArray(s) && s.length)
-                      return <ul className="list-disc list-inside text-sm space-y-1">{s.map((sym: string, i: number) => <li key={i}>{sym}</li>)}</ul>;
+                      return <ul className="list-disc list-inside text-sm space-y-1">{s.map((sym: any, i: number) => <li key={i}>{safeRender(sym)}</li>)}</ul>;
+
                     return <p className="text-sm">N/A</p>;
                   })()}
                 </div>
 
                 <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                   <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">Follow-up Plan</p>
-                  <p className="text-sm leading-relaxed text-blue-900">{report?.follow_up_plan || vitals.FollowUpPlan || "N/A"}</p>
+                  <p className="text-sm leading-relaxed text-blue-900">{safeRender(report?.follow_up_plan || vitals.FollowUpPlan)}</p>
+
                 </div>
 
                 <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
                   <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-1">Immediate Action Required</p>
-                  <p className="text-sm leading-relaxed text-amber-900">{report?.action_required || vitals.ActionRequired || "N/A"}</p>
+                  <p className="text-sm leading-relaxed text-amber-900">{safeRender(report?.action_required || vitals.ActionRequired)}</p>
+                </div>
+
+                {/* Follow-up & Appointment schedules */}
+                <div className="space-y-3">
+                  {(() => {
+                    const appt = report?.appointment || vitals.Appointment;
+                    if (appt) {
+                      return (
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-2">📅 Clinic Appointment Scheduled</p>
+                          <p className="text-base font-extrabold text-indigo-900">{appt.date}</p>
+                          <p className="text-sm font-bold text-indigo-700">🕐 {appt.time}</p>
+                          <p className="text-xs text-indigo-500 mt-1">Please arrive 10 minutes early with medication list.</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {(() => {
+                    const followCall = report?.follow_up_call || vitals.FollowUpCall;
+                    if (followCall) {
+                      return (
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2">📞 Next AI Follow-up Call</p>
+                          <p className="text-base font-extrabold text-emerald-900">{followCall.date}</p>
+                          <p className="text-sm font-bold text-emerald-700">🕐 {followCall.time}</p>
+                          <p className="text-xs text-emerald-500 mt-1">You will receive an automated check-in call directly to your registered phone number.</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {vitals.ReportPdfPath && (
@@ -509,48 +699,6 @@ export default function CallDetail() {
           </div>
         </div>
 
-        {/* ─── Panel 3: Extracted Vitals ─── */}
-        <div className="bg-card border-2 border-border shadow-soft rounded-xl flex flex-col" style={panelStyle}>
-          {/* Sticky header */}
-          <div className="shrink-0 px-5 sm:px-6 pt-5 pb-3 border-b-2 border-border border-dashed">
-            <h3 className="text-base sm:text-lg font-heading font-extrabold flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center border-2 border-border shadow-[2px_2px_0_0_#1E293B] shrink-0">
-                <Activity className="w-4 h-4" />
-              </div>
-              Extracted Vitals
-            </h3>
-          </div>
-
-          {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 py-4">
-            {vitalsDisplayEntries.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-70 gap-3">
-                <div className="w-16 h-16 border-4 border-dashed border-border rounded-full flex items-center justify-center">
-                  <Activity className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground font-bold text-sm">No vitals extracted from conversation.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {vitalsDisplayEntries.map(([key, value]) => {
-                  let Icon = Stethoscope;
-                  let color = "bg-accent";
-                  if (key.toLowerCase().includes("bpm") || key.toLowerCase().includes("heart")) { Icon = Heart; color = "bg-secondary"; }
-                  if (key.toLowerCase().includes("bp") || key.toLowerCase().includes("pressure")) { color = "bg-tertiary"; }
-                  if (key.toLowerCase().includes("o2") || key.toLowerCase().includes("oxygen")) { Icon = Wind; color = "bg-quaternary"; }
-
-                  return (
-                    <div key={key} className={`p-4 rounded-xl border-2 border-border shadow-[3px_3px_0_0_#1E293B] ${color} text-white hover:-translate-y-0.5 transition-transform`}>
-                      <Icon className="w-5 h-5 mb-1.5" />
-                      <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-0.5">{key}</p>
-                      <p className="text-base font-heading font-extrabold tracking-tight break-words leading-tight">{String(value)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
 
       </div>
     </div>
