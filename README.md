@@ -1,7 +1,7 @@
-# VITALS: Agentic AI Healthcare
+# VITALS: AI-powered Autonomous Voice-calling system for proactive patient monitoring and automated clinical documentation
 
 <p align="center">
-  <img src="Assets/Vitals%20Logo.png" alt="VITALS Logo" width="200"/>
+  <img src="Assets/Vitals%20Logo.png" alt="VITALS Logo" width="300"/>
 </p>
 
 <p align="center">
