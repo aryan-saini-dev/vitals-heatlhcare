@@ -17,7 +17,7 @@
 | **Aryan Saini** | [@aryan-saini-dev](https://github.com/aryan-saini-dev) |
 | **Aryan Gusain** | [@AryanGusain-dev](https://github.com/AryanGusain-dev) |
 | **Archee Sinha** | [@ArcheeSinha](https://github.com/ArcheeSinha) |
-| **Darshita Gupta** | [@darshitagupta](https://github.com/darshitagupta) |
+| **Darshita Gupta** | [@darshita-gupta](https://github.com/darshita-gupta) |
 | **Atharv Varshney** | [@ATHARV53344](https://github.com/ATHARV53344) |
 
 ---
