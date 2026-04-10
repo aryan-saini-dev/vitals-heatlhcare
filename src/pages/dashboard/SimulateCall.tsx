@@ -6,6 +6,8 @@ import type { PatientInfo } from "@/components/VoiceAssistant";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "@/lib/api";
 import { toast } from "sonner";
+import { safeRender } from "@/lib/renderUtils";
+
 
 const LISTS_INVALIDATE = "vitals:invalidate-lists";
 
@@ -616,12 +618,12 @@ export default function SimulateCall() {
                     <div>
                        <h2 className="text-3xl font-heading font-black uppercase tracking-tight text-white border-none bg-transparent m-0 leading-none">Clinical Assessment</h2>
                        <p className="font-bold opacity-80 uppercase text-xs tracking-widest text-white border-none bg-transparent mt-2">
-                         {summaryData.alert_type || "AI chart review — live data"}
+                         {safeRender(summaryData.alert_type)}
                        </p>
                     </div>
                  </div>
                  <div className={`px-6 py-3 rounded-2xl border-2 border-white/50 backdrop-blur-md font-black italic text-xl uppercase ${summaryData.risk_level === 'high' ? 'bg-destructive ring-4 ring-destructive/30' : 'bg-primary'}`}>
-                    {summaryData.risk_level} Risk
+                    {safeRender(summaryData.risk_level)} Risk
                  </div>
               </div>
 
@@ -630,7 +632,7 @@ export default function SimulateCall() {
                     <h4 className="flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest text-sm border-none bg-transparent">
                        <Activity className="w-4 h-4 text-quaternary" /> Executive Summary
                     </h4>
-                    <p className="text-2xl font-bold leading-relaxed">{summaryData.summary}</p>
+                    <p className="text-2xl font-bold leading-relaxed">{safeRender(summaryData.summary)}</p>
                  </div>
 
                  <div className="grid md:grid-cols-2 gap-8">
@@ -639,7 +641,7 @@ export default function SimulateCall() {
                           <AlertTriangle className="w-4 h-4 text-secondary" /> Triage / alert title
                        </h4>
                        <div className="p-4 bg-white border-2 border-border rounded-2xl font-black text-lg text-secondary shadow-pop uppercase italic">
-                          {summaryData.alert_type || "—"}
+                          {safeRender(summaryData.alert_type)}
                        </div>
                     </div>
                     
@@ -649,9 +651,9 @@ export default function SimulateCall() {
                        </h4>
                        <div className="flex flex-wrap gap-2">
                           {summaryData.symptoms?.length ? (
-                            summaryData.symptoms.map((s: string, i: number) => (
+                            summaryData.symptoms.map((s: any, i: number) => (
                              <span key={i} className="px-3 py-1 bg-white border-2 border-border rounded-full font-bold text-sm">
-                                {s}
+                                 {safeRender(s)}
                              </span>
                             ))
                           ) : (
@@ -665,11 +667,11 @@ export default function SimulateCall() {
                    <div className="grid md:grid-cols-2 gap-6 text-left">
                      <div className="p-6 rounded-3xl border-2 border-border bg-background space-y-2">
                        <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Working impression / diagnosis</h4>
-                       <p className="text-lg font-bold leading-snug">{summaryData.diagnosis || "—"}</p>
+                       <p className="text-lg font-bold leading-snug">{safeRender(summaryData.diagnosis)}</p>
                      </div>
                      <div className="p-6 rounded-3xl border-2 border-border bg-background space-y-2">
                        <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Relevant history</h4>
-                       <p className="text-sm font-medium leading-relaxed text-foreground">{summaryData.relevant_history || "—"}</p>
+                       <p className="text-sm font-medium leading-relaxed text-foreground">{safeRender(summaryData.relevant_history)}</p>
                      </div>
                    </div>
                  )}
@@ -677,7 +679,7 @@ export default function SimulateCall() {
                  {summaryData.clinical_reasoning ? (
                    <div className="p-6 rounded-3xl border-2 border-dashed border-border bg-muted/30 text-left space-y-2">
                      <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Clinical reasoning</h4>
-                     <p className="text-sm font-medium leading-relaxed">{summaryData.clinical_reasoning}</p>
+                     <p className="text-sm font-medium leading-relaxed">{safeRender(summaryData.clinical_reasoning)}</p>
                    </div>
                  ) : null}
 
@@ -685,9 +687,9 @@ export default function SimulateCall() {
                    <div className="text-left space-y-2">
                      <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Differential diagnoses</h4>
                      <div className="flex flex-wrap gap-2">
-                       {summaryData.differential_diagnosis.map((d: string, i: number) => (
+                       {summaryData.differential_diagnosis.map((d: any, i: number) => (
                          <span key={i} className="px-3 py-1 rounded-full border-2 border-border bg-card text-sm font-bold">
-                           {d}
+                           {safeRender(d)}
                          </span>
                        ))}
                      </div>
@@ -697,20 +699,20 @@ export default function SimulateCall() {
                  {summaryData.follow_up_plan ? (
                    <div className="p-6 rounded-3xl border-2 border-border bg-muted/20 text-left">
                      <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Follow-up plan</h4>
-                     <p className="text-sm font-medium">{summaryData.follow_up_plan}</p>
+                     <p className="text-sm font-medium">{safeRender(summaryData.follow_up_plan)}</p>
                    </div>
                  ) : null}
 
                  <div className="p-8 bg-muted/80 rounded-3xl border-2 border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Object.keys(summaryData.vitals_data || {}).length === 0 ? (
-                      <p className="col-span-full text-center text-sm text-muted-foreground font-medium py-4">
-                        No extra vitals key/value pairs from the model for this call.
-                      </p>
+                       <p className="col-span-full text-center text-sm text-muted-foreground font-medium py-4">
+                         No extra vitals key/value pairs from the model for this call.
+                       </p>
                     ) : (
                     Object.entries(summaryData.vitals_data).map(([key, val]: any) => (
                        <div key={key} className="text-center p-3 bg-white rounded-2xl border-2 border-border shadow-soft">
                           <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-tighter">{key.replace('_',' ')}</p>
-                          <p className="text-lg font-black text-foreground">{String(val)}</p>
+                          <p className="text-lg font-black text-foreground">{safeRender(val)}</p>
                        </div>
                     ))
                     )}
@@ -719,7 +721,7 @@ export default function SimulateCall() {
                  <div className="p-8 bg-secondary/5 rounded-3xl border-4 border-dashed border-secondary/30 flex items-center justify-between text-left">
                     <div>
                        <h4 className="text-secondary font-black uppercase tracking-widest text-sm mb-1 border-none bg-transparent">Recommended Action</h4>
-                       <p className="text-xl font-bold">{summaryData.action_required}</p>
+                       <p className="text-xl font-bold">{safeRender(summaryData.action_required)}</p>
                     </div>
                     <Shield className="w-12 h-12 text-secondary opacity-20" />
                  </div>

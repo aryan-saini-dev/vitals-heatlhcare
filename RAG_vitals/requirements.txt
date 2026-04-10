@@ -1,0 +1,31 @@
+# Medical RAG System — Python Dependencies
+# Install with:  pip install -r requirements.txt
+
+# ── Core LangChain stack ──────────────────────────────────────────────────────
+langchain==0.2.16
+langchain-community==0.2.16
+langchain-core==0.2.38
+
+# ── Vector database ───────────────────────────────────────────────────────────
+chromadb==0.5.5
+
+# ── Embeddings ────────────────────────────────────────────────────────────────
+sentence-transformers==3.0.1
+torch==2.3.1          # CPU build; change to torch[cuda] for GPU
+transformers==4.44.2
+
+# ── Google Gemini LLM ─────────────────────────────────────────────────────────
+google-generativeai==0.7.2
+
+# ── Data handling ─────────────────────────────────────────────────────────────
+pandas==2.2.2
+numpy==1.26.4
+
+# ── Optimised retrieval (v2) ──────────────────────────────────────────────────
+rank_bm25==0.2.2        # BM25 keyword retriever for hybrid search
+# cross-encoder/ms-marco-MiniLM-L-6-v2 is downloaded automatically
+# by sentence-transformers — no extra install needed
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1   # optional: load .env file automatically
+tqdm==4.66.4           # progress bars during ingestion
