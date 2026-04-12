@@ -1,6 +1,6 @@
-2026/04/10-19:23:03.350 6594 Reusing MANIFEST C:\Users\VICTUS\Documents\Git-updated-projects\Vitals Project\vitals-heatlhcare\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2026/04/10-19:23:03.369 6594 Recovering log #16
-2026/04/10-19:23:03.372 6594 Reusing old log C:\Users\VICTUS\Documents\Git-updated-projects\Vitals Project\vitals-heatlhcare\.wwebjs_auth\session\Default\Local Storage\leveldb/000016.log 
-2026/04/10-20:33:42.015 6594 Level-0 table #21: started
-2026/04/10-20:33:42.037 6594 Level-0 table #21: 14704 bytes OK
-2026/04/10-20:33:42.044 6594 Delete type=0 #16
+2026/04/11-17:38:47.560 678c Reusing MANIFEST C:\Users\Aryan Gusain\OneDrive\Desktop\Dummy\Projects\vitals-heatlhcare\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/04/11-17:38:47.564 678c Recovering log #4
+2026/04/11-17:38:47.568 678c Reusing old log C:\Users\Aryan Gusain\OneDrive\Desktop\Dummy\Projects\vitals-heatlhcare\.wwebjs_auth\session\Default\Local Storage\leveldb/000004.log 
+2026/04/11-23:23:06.330 3f8c Level-0 table #8: started
+2026/04/11-23:23:06.860 3f8c Level-0 table #8: 13885 bytes OK
+2026/04/11-23:23:06.917 3f8c Delete type=0 #4
