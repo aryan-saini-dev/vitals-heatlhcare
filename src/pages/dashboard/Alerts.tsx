@@ -122,7 +122,7 @@ export default function Alerts() {
         <div className="p-8 text-center text-muted-foreground font-bold animate-pulse">Loading alerts...</div>
       ) : alerts.length === 0 ? (
         <div className="bg-card border-2 border-border rounded-xl shadow-soft p-16 text-center flex flex-col items-center">
-          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center border-2 border-border mb-6 shadow-[4px_4px_0_0_#1E293B]">
+          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center border-2 border-border mb-6 shadow-soft">
             <Bell className="w-10 h-10 text-muted-foreground" />
           </div>
           <h3 className="text-3xl font-heading font-extrabold text-foreground mb-3">All clear!</h3>
@@ -142,16 +142,16 @@ export default function Alerts() {
              
              // Playful geometric specific active states
              const highlightColor = isValidHigh 
-               ? 'bg-secondary text-white border-2 border-border shadow-[4px_4px_0_0_#1E293B] -translate-y-1' 
+               ? 'bg-primary text-white border-2 border-border shadow-pop -translate-y-1' 
                : isApproved
-                 ? 'bg-emerald-50 text-foreground border-2 border-border shadow-soft'
+                 ? 'bg-quaternary/10 text-foreground border-2 border-border shadow-soft'
                  : isDenied
-                   ? 'bg-rose-50 text-foreground border-2 border-border shadow-soft'
+                   ? 'bg-destructive/10 text-foreground border-2 border-border shadow-soft'
                : isOpen 
                  ? 'bg-card text-foreground border-2 border-border shadow-soft'
                  : 'bg-muted/30 text-muted-foreground border-2 border-dashed border-border opacity-70';
                  
-             const pillColor = isValidHigh ? 'bg-white text-secondary' : 'bg-background text-foreground border-2 border-border';
+             const pillColor = isValidHigh ? 'bg-white text-primary' : 'bg-background text-foreground border-2 border-border';
 
              return (
               <div
@@ -164,7 +164,7 @@ export default function Alerts() {
                 <div className="flex flex-col gap-5 sm:gap-6 relative z-10">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-full shadow-[2px_2px_0_0_rgba(30,41,59,0.3)] ${pillColor}`}>
+                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-full shadow-pop ${pillColor}`}>
                          {alert.severity} Priority
                        </span>
                        <span className={`text-xs font-bold uppercase tracking-widest ${isValidHigh ? 'text-white/80' : 'text-muted-foreground'}`}>{new Date(alert.created_at).toLocaleString()}</span>
@@ -197,13 +197,13 @@ export default function Alerts() {
                           <>
                             <button
                               onClick={(e) => setDecision(alert.call.id, "approved", e)}
-                              className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-emerald-100 hover:bg-emerald-200 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-quaternary/15 hover:bg-quaternary/25 transition-colors"
                             >
                               Approve
                             </button>
                             <button
                               onClick={(e) => setDecision(alert.call.id, "denied", e)}
-                              className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-rose-100 hover:bg-rose-200 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-destructive/10 hover:bg-destructive/15 transition-colors"
                             >
                               Deny
                             </button>
@@ -215,7 +215,7 @@ export default function Alerts() {
                             </button>
                             <Link
                               to={`/dashboard/calls/${alert.call.id}`}
-                              className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-quaternary text-white"
+                              className="inline-flex items-center justify-center gap-1.5 h-10 px-3 font-bold text-xs rounded-xl border-2 border-border bg-primary text-white"
                             >
                               View Details
                             </Link>
@@ -223,7 +223,7 @@ export default function Alerts() {
                         )}
                         <button 
                           onClick={(e) => markResolved(alert.id, e)}
-                          className={`inline-flex items-center justify-center gap-2 h-10 px-3 font-heading font-extrabold text-xs uppercase tracking-wide rounded-xl border-2 transition-all shadow-[3px_3px_0_0_#1E293B] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[1px_1px_0_0_#1E293B] ${isValidHigh ? 'bg-white text-secondary border-transparent hover:bg-muted' : 'bg-background text-foreground border-border hover:bg-muted'}`}
+                          className={`inline-flex items-center justify-center gap-2 h-10 px-3 font-heading font-extrabold text-xs uppercase tracking-wide rounded-xl border-2 transition-all shadow-pop hover:-translate-y-0.5 active:translate-y-0 active:shadow-pop-active ${isValidHigh ? 'bg-white text-primary border-transparent hover:bg-muted' : 'bg-background text-foreground border-border hover:bg-muted'}`}
                         >
                           <CheckCircle2 className="w-4 h-4" strokeWidth={2.5}/> Resolve
                         </button>

@@ -54,13 +54,13 @@ export default function PatientDetail() {
         <div className="text-center md:text-left z-10">
           <h1 className="text-4xl font-heading font-extrabold text-foreground tracking-tight">{patient.name}</h1>
           <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
-            <span className="px-3 py-1 bg-quaternary/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-[2px_2px_0_0_#1E293B]">
+            <span className="px-3 py-1 bg-quaternary/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-pop">
               DOB: {patient.date_of_birth || "Unknown"}
             </span>
-            <span className="px-3 py-1 bg-tertiary/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-[2px_2px_0_0_#1E293B]">
+            <span className="px-3 py-1 bg-tertiary/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-pop">
               Condition: {patient.condition}
             </span>
-            <span className="px-3 py-1 bg-accent/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-[2px_2px_0_0_#1E293B]">
+            <span className="px-3 py-1 bg-accent/20 text-foreground border-2 border-border rounded-full text-sm font-bold shadow-pop">
               Agent: {patient.agent_name || "None"}
             </span>
           </div>
@@ -71,7 +71,7 @@ export default function PatientDetail() {
         {/* Recent Alerts */}
         <div className="bg-card border-2 border-border rounded-xl shadow-soft p-6">
            <h2 className="text-2xl font-heading font-extrabold flex items-center gap-3 mb-6">
-             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white border-2 border-border shadow-[2px_2px_0_0_rgb(226,232,240)]"><AlertCircle className="w-5 h-5" /></div>
+             <div className="w-10 h-10 rounded-full bg-tertiary flex items-center justify-center text-foreground border-2 border-border shadow-pop"><AlertCircle className="w-5 h-5" /></div>
              Recent Alerts
            </h2>
            {alerts.length === 0 ? (
@@ -84,7 +84,7 @@ export default function PatientDetail() {
                      <p className="font-bold text-foreground text-lg">{a.alert_type}</p>
                      <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{new Date(a.created_at).toLocaleDateString()}</p>
                    </div>
-                   <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full border-2 border-border ${a.status === 'open' ? 'bg-secondary text-white shadow-[2px_2px_0_0_#1E293B]' : 'bg-muted text-muted-foreground'}`}>{a.status}</span>
+                   <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full border-2 border-border ${a.status === 'open' ? 'bg-primary text-white shadow-pop' : 'bg-muted text-muted-foreground'}`}>{a.status}</span>
                  </div>
                ))}
              </div>
@@ -94,7 +94,7 @@ export default function PatientDetail() {
         {/* Recent Calls */}
         <div className="bg-card border-2 border-border rounded-xl shadow-soft p-6">
            <h2 className="text-2xl font-heading font-extrabold flex items-center gap-3 mb-6">
-             <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-white border-2 border-border shadow-[2px_2px_0_0_rgb(226,232,240)]"><Phone className="w-5 h-5" /></div>
+             <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-foreground border-2 border-border shadow-pop"><Phone className="w-5 h-5" /></div>
              Recent Calls
            </h2>
            {calls.length === 0 ? (

@@ -342,7 +342,7 @@ export function VoiceAssistant({
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 border ${
             isListening
-              ? "border-green-500 text-green-600"
+              ? "border-quaternary text-foreground bg-quaternary/10"
               : "border-border text-muted-foreground"
           }`}
         >
@@ -351,7 +351,7 @@ export function VoiceAssistant({
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 border ${
             isSpeaking
-              ? "border-blue-500 text-blue-600"
+              ? "border-primary text-primary bg-primary/10"
               : "border-border text-muted-foreground"
           }`}
         >
@@ -370,7 +370,7 @@ export function VoiceAssistant({
             !patient ||
             !callerPhoneNumber.trim()
           }
-          className="flex-1 h-11 rounded-full bg-secondary text-white font-heading font-bold border-2 border-border disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 h-11 rounded-full bg-primary text-white font-heading font-bold border-2 border-border shadow-pop hover:bg-medical-blue-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {status === "connecting" || status === "requesting-permission"
             ? "Connecting…"
@@ -387,7 +387,7 @@ export function VoiceAssistant({
       </div>
 
       {errorMessage && (
-        <p className="text-xs text-red-600 font-semibold">{errorMessage}</p>
+        <p className="text-xs text-destructive font-semibold">{errorMessage}</p>
       )}
 
       {transcriptTurns.length > 0 && (

@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 47 100% 98%;
+    --background: 211 69% 97%;
     --foreground: 215 28% 17%;
 
     --card: 0 0% 100%;
@@ -15,38 +15,39 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
 
-    --primary: 263 90% 66%;
+    --primary: 213 70% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 330 86% 71%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 269 93% 75%;
+    --secondary-foreground: 215 28% 17%;
 
     --muted: 210 40% 96%;
-    --muted-foreground: 215 20% 32%;
+    --muted-foreground: 215 18% 38%;
 
-    --accent: 263 90% 66%;
+    --accent: 213 70% 39%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
+    --border: 214 32% 88%;
     --input: 0 0% 100%;
-    --ring: 263 90% 66%;
+    --ring: 213 70% 39%;
 
-    --radius: 16px;
+    --radius: 24px;
 
     --tertiary: 45 96% 56%;
     --tertiary-foreground: 215 28% 17%;
     --quaternary: 160 64% 52%;
-    --quaternary-foreground: 0 0% 100%;
+    --quaternary-foreground: 215 28% 17%;
 
-    --shadow-color: 215 28% 17%;
-    --shadow-pop: 4px 4px 0px 0px hsl(215 28% 17%);
-    --shadow-pop-hover: 6px 6px 0px 0px hsl(215 28% 17%);
-    --shadow-pop-active: 2px 2px 0px 0px hsl(215 28% 17%);
-    --shadow-soft: 8px 8px 0px 0px hsl(215 20% 65%);
-    --shadow-pink: 8px 8px 0px 0px hsl(330 86% 71%);
+    --shadow-color: 213 70% 39%;
+    --shadow-pop: 0 10px 24px -16px hsl(213 70% 39% / 0.48), 0 2px 0px 0px hsl(213 70% 39% / 0.18);
+    --shadow-pop-hover: 0 18px 36px -20px hsl(213 70% 39% / 0.52), 0 3px 0px 0px hsl(213 70% 39% / 0.22);
+    --shadow-pop-active: 0 8px 18px -16px hsl(213 70% 39% / 0.44), 0 1px 0px 0px hsl(213 70% 39% / 0.18);
+    --shadow-soft: 0 14px 36px -24px hsl(213 70% 39% / 0.35), 0 1px 0px 0px hsl(214 32% 88%);
+    --shadow-pink: 0 14px 34px -22px hsl(269 93% 75% / 0.45), 0 2px 0px 0px hsl(269 93% 75% / 0.22);
+    --shadow-sticker-elevated: 0 22px 48px -28px hsl(213 70% 39% / 0.48), 0 2px 0px 0px hsl(213 70% 39% / 0.18);
 
     --font-heading: 'Outfit', system-ui, sans-serif;
     --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -133,8 +134,14 @@
   .shadow-soft {
     box-shadow: var(--shadow-soft);
   }
+  .shadow-pop-soft {
+    box-shadow: var(--shadow-soft);
+  }
   .shadow-pink {
     box-shadow: var(--shadow-pink);
+  }
+  .shadow-sticker-elevated {
+    box-shadow: var(--shadow-sticker-elevated);
   }
   .blob-radius {
     border-radius: 1rem 1rem 1rem 0;

@@ -2,9 +2,9 @@ import { GraduationCap } from "lucide-react";
 
 const members = [
   { name: "Aryan Saini", role: "Team Leader" },
+  { name: "Darshita Gupta", role: "Member" },
   { name: "Aryan Gusain", role: "Member" },
-  { name: "Ansh Thakur", role: "Member" },
-  { name: "Anshika Garg", role: "Member" },
+  { name: "Archee Sinha", role: "Member" },
 ];
 
 const colors = ["bg-primary", "bg-secondary", "bg-tertiary", "bg-quaternary"];
@@ -15,14 +15,14 @@ const TeamSection = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16 space-y-4">
           <span className="inline-block px-4 py-2 rounded-full bg-primary text-primary-foreground font-heading font-bold text-sm border-2 border-foreground shadow-pop">
-            Team Unfazed
+            Team V.I.T.A.L.S
           </span>
           <h2 className="font-heading font-extrabold text-3xl md:text-5xl">
             Meet the <span className="text-secondary">Team</span>
           </h2>
           <p className="text-muted-foreground text-lg flex items-center justify-center gap-2">
             <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
-            ABESIT — Stellaris 2026
+            V.I.T.A.L.S.
           </p>
         </div>
 

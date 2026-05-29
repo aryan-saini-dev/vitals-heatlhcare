@@ -294,7 +294,7 @@ export default function CallDetail() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-violet-500" />
+              <Sparkles className="w-5 h-5 text-secondary" />
               Customize AI Report Regeneration
             </DialogTitle>
           </DialogHeader>
@@ -305,14 +305,14 @@ export default function CallDetail() {
             <div className="relative">
               <Textarea 
                 placeholder="e.g. 'Add that the patient also complained of severe headaches' or 'Translate the summary into Spanish'"
-                className="min-h-[120px] pr-12 focus-visible:ring-violet-500"
+                className="min-h-[120px] pr-12 focus-visible:ring-ring"
                 value={regeneratePrompt}
                 onChange={(e) => setRegeneratePrompt(e.target.value)}
               />
               <button 
                 type="button"
                 onClick={toggleListening}
-                className={`absolute bottom-3 right-3 p-2 rounded-full transition-colors ${isListening ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-muted hover:bg-muted-foreground/10 text-muted-foreground'}`}
+                className={`absolute bottom-3 right-3 p-2 rounded-full transition-colors ${isListening ? 'bg-destructive/10 text-destructive animate-pulse' : 'bg-muted hover:bg-muted-foreground/10 text-muted-foreground'}`}
                 title={isListening ? "Stop listening" : "Start Voice Typing"}
               >
                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -321,7 +321,7 @@ export default function CallDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRegenerateModalOpen(false)}>Cancel</Button>
-            <Button onClick={generateReport} className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
+            <Button onClick={generateReport} className="bg-primary hover:bg-medical-blue-hover text-white gap-2">
               <RefreshCw className="w-4 h-4" /> Apply & Regenerate
             </Button>
           </DialogFooter>
@@ -368,8 +368,8 @@ export default function CallDetail() {
         <div className="mt-5 flex flex-wrap gap-2 relative z-10">
           {!doctorDecision && (
             <>
-              <button type="button" onClick={() => setDecision("approved")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-emerald-100 hover:bg-emerald-200 transition-colors">Approve</button>
-              <button type="button" onClick={() => setDecision("denied")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-rose-100 hover:bg-rose-200 transition-colors">Deny</button>
+              <button type="button" onClick={() => setDecision("approved")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-quaternary/15 hover:bg-quaternary/25 transition-colors">Approve</button>
+              <button type="button" onClick={() => setDecision("denied")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-destructive/10 hover:bg-destructive/15 transition-colors">Deny</button>
             </>
           )}
           <button type="button" onClick={downloadReport} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-background hover:bg-muted transition-colors">
@@ -379,7 +379,7 @@ export default function CallDetail() {
             type="button"
             onClick={generateReport}
             disabled={reportGenerating || !transcriptText}
-            className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-violet-100 hover:bg-violet-200 text-violet-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-secondary/15 hover:bg-secondary/25 text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={!transcriptText ? "No transcript available" : "Clean transcript & generate AI report"}
           >
             <span className="inline-flex items-center gap-1">
@@ -389,7 +389,7 @@ export default function CallDetail() {
             </span>
           </button>
           {reportError && (
-            <p className="w-full text-xs font-bold text-rose-600 mt-1 bg-rose-50 border border-rose-200 rounded px-3 py-2">
+            <p className="w-full text-xs font-bold text-destructive mt-1 bg-destructive/10 border border-destructive/20 rounded px-3 py-2">
               ⚠ {reportError}
             </p>
           )}
@@ -398,7 +398,7 @@ export default function CallDetail() {
             id="send-whatsapp-btn"
             onClick={sendOnWhatsApp}
             disabled={waSending}
-            className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-green-100 hover:bg-green-200 text-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-quaternary/15 hover:bg-quaternary/25 text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Send the PDF report to the patient's WhatsApp number"
           >
             <span className="inline-flex items-center gap-1">
@@ -410,8 +410,8 @@ export default function CallDetail() {
           {waStatus && (
             <p className={`w-full text-xs font-bold mt-1 border rounded px-3 py-2 ${
               waStatus.type === "success"
-                ? "text-green-700 bg-green-50 border-green-200"
-                : "text-rose-600 bg-rose-50 border-rose-200"
+                ? "text-foreground bg-quaternary/10 border-quaternary/30"
+                : "text-destructive bg-destructive/10 border-destructive/20"
             }`}>
               {waStatus.msg}
             </p>
@@ -429,11 +429,11 @@ export default function CallDetail() {
           <div className="shrink-0 px-5 sm:px-6 pt-5 pb-3 border-b-2 border-border border-dashed">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="text-base sm:text-lg font-heading font-extrabold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-500 shrink-0" /> AI Clinical Report
+                <Sparkles className="w-5 h-5 text-secondary shrink-0" /> AI Clinical Report
               </h3>
               <div className="flex items-center gap-2">
                 {vitals.ReportPipeline === "clean-then-generate" && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-700 border border-violet-300">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-secondary/15 text-foreground border border-secondary/30">
                     <Sparkles className="w-3 h-3" /> Processed
                   </span>
                 )}
@@ -441,7 +441,7 @@ export default function CallDetail() {
                   type="button"
                   onClick={() => setIsRegenerateModalOpen(true)}
                   disabled={reportGenerating || !transcriptText || !hasAiNarrative}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border border-border bg-violet-100 hover:bg-violet-200 text-violet-800 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border border-border bg-secondary/15 hover:bg-secondary/25 text-foreground transition-colors disabled:opacity-50"
                   title="Modify the report with custom AI instructions"
                 >
                   <MessageSquare className="w-3 h-3" /> Edit
@@ -466,16 +466,16 @@ export default function CallDetail() {
             {(hasAiNarrative) ? (
               <div className="space-y-3">
                 {reportGenerating && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-violet-50 border border-violet-200">
-                    <Loader2 className="w-4 h-4 text-violet-600 animate-spin shrink-0" />
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/10 border border-secondary/25">
+                    <Loader2 className="w-4 h-4 text-secondary animate-spin shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-violet-800">Processing & generating…</p>
-                      <p className="text-xs text-violet-600">Step 1: Clean → Step 2: Clinical analysis</p>
+                      <p className="text-xs font-bold text-foreground">Processing & generating…</p>
+                      <p className="text-xs text-muted-foreground">Step 1: Clean → Step 2: Clinical analysis</p>
                     </div>
                   </div>
                 )}
                 {reportError && (
-                  <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded px-3 py-2">⚠ {reportError}</p>
+                  <p className="text-xs font-bold text-destructive bg-destructive/10 border border-destructive/20 rounded px-3 py-2">⚠ {reportError}</p>
                 )}
 
                 {[
@@ -504,10 +504,10 @@ export default function CallDetail() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className={`p-3 rounded-lg border ${
                     (report?.risk_level || vitals.RiskLevel) === "high"
-                      ? "bg-rose-50 border-rose-200 text-rose-800"
+                      ? "bg-destructive/10 border-destructive/20 text-foreground"
                       : (report?.risk_level || vitals.RiskLevel) === "medium"
-                        ? "bg-amber-50 border-amber-200 text-amber-800"
-                        : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        ? "bg-tertiary/15 border-tertiary/35 text-foreground"
+                        : "bg-quaternary/15 border-quaternary/30 text-foreground"
                   }`}>
                     <p className="text-xs font-bold uppercase tracking-widest opacity-70 mb-1">Risk Level</p>
                     <p className="text-sm font-extrabold uppercase">{safeRender(report?.risk_level || vitals.RiskLevel)}</p>
@@ -531,15 +531,15 @@ export default function CallDetail() {
                   })()}
                 </div>
 
-                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">Follow-up Plan</p>
-                  <p className="text-sm leading-relaxed text-blue-900">{safeRender(report?.follow_up_plan || vitals.FollowUpPlan)}</p>
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Follow-up Plan</p>
+                  <p className="text-sm leading-relaxed text-foreground">{safeRender(report?.follow_up_plan || vitals.FollowUpPlan)}</p>
 
                 </div>
 
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-1">Immediate Action Required</p>
-                  <p className="text-sm leading-relaxed text-amber-900">{safeRender(report?.action_required || vitals.ActionRequired)}</p>
+                <div className="p-3 rounded-lg bg-tertiary/15 border border-tertiary/35">
+                  <p className="text-xs font-bold uppercase tracking-widest text-foreground mb-1">Immediate Action Required</p>
+                  <p className="text-sm leading-relaxed text-foreground">{safeRender(report?.action_required || vitals.ActionRequired)}</p>
                 </div>
 
                 {/* Follow-up & Appointment schedules */}
@@ -548,11 +548,11 @@ export default function CallDetail() {
                     const appt = report?.appointment || vitals.Appointment;
                     if (appt) {
                       return (
-                        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 shadow-sm">
-                          <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-2">📅 Clinic Appointment Scheduled</p>
-                          <p className="text-base font-extrabold text-indigo-900">{appt.date}</p>
-                          <p className="text-sm font-bold text-indigo-700">🕐 {appt.time}</p>
-                          <p className="text-xs text-indigo-500 mt-1">Please arrive 10 minutes early with medication list.</p>
+                        <div className="p-4 rounded-xl bg-primary/10 border-2 border-primary/20 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-2">📅 Clinic Appointment Scheduled</p>
+                          <p className="text-base font-extrabold text-foreground">{appt.date}</p>
+                          <p className="text-sm font-bold text-primary">🕐 {appt.time}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Please arrive 10 minutes early with medication list.</p>
                         </div>
                       );
                     }
@@ -563,11 +563,11 @@ export default function CallDetail() {
                     const followCall = report?.follow_up_call || vitals.FollowUpCall;
                     if (followCall) {
                       return (
-                        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-sm">
-                          <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2">📞 Next AI Follow-up Call</p>
-                          <p className="text-base font-extrabold text-emerald-900">{followCall.date}</p>
-                          <p className="text-sm font-bold text-emerald-700">🕐 {followCall.time}</p>
-                          <p className="text-xs text-emerald-500 mt-1">You will receive an automated check-in call directly to your registered phone number.</p>
+                        <div className="p-4 rounded-xl bg-quaternary/10 border-2 border-quaternary/30 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-widest text-foreground mb-2">📞 Next AI Follow-up Call</p>
+                          <p className="text-base font-extrabold text-foreground">{followCall.date}</p>
+                          <p className="text-sm font-bold text-foreground">🕐 {followCall.time}</p>
+                          <p className="text-xs text-muted-foreground mt-1">You will receive an automated check-in call directly to your registered phone number.</p>
                         </div>
                       );
                     }
@@ -581,14 +581,14 @@ export default function CallDetail() {
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3 py-8">
-                <Sparkles className="w-10 h-10 text-violet-400" />
+                <Sparkles className="w-10 h-10 text-secondary" />
                 <h3 className="text-base font-heading font-extrabold">No AI Report Yet</h3>
                 <p className="text-sm text-muted-foreground max-w-xs">Generate a structured clinical report from the call transcript.</p>
                 <button
                   type="button"
                   onClick={generateReport}
                   disabled={reportGenerating || !transcriptText}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border-2 border-violet-300 bg-violet-100 hover:bg-violet-200 text-violet-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border-2 border-secondary/30 bg-secondary/15 hover:bg-secondary/25 text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {reportGenerating
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
@@ -610,8 +610,8 @@ export default function CallDetail() {
               <h3 className="text-base sm:text-lg font-heading font-extrabold tracking-tight">Call Transcript</h3>
               <div className="flex items-center gap-2">
                 {transcriptSource === "vapi" && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" /> Live · Vapi
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-quaternary/15 text-foreground border border-quaternary/30">
+                    <span className="w-2 h-2 rounded-full bg-quaternary animate-pulse inline-block" /> Live · Vapi
                   </span>
                 )}
                 {transcriptSource === "stored" && (
@@ -668,7 +668,7 @@ export default function CallDetail() {
 
                 return (
                   <div key={idx} className={`flex w-full ${isPatient ? "justify-end" : "justify-start"}`}>
-                    <div className="max-w-[85%] p-4 rounded-2xl border-2 border-border bg-background shadow-[4px_4px_0_0_rgba(30,41,59,0.08)] relative">
+                    <div className="max-w-[85%] p-4 rounded-2xl border-2 border-border bg-background shadow-soft relative">
                       <div className={`absolute top-4 w-4 h-4 border-2 border-border bg-background rotate-45 ${isPatient ? "-right-2 border-l-0 border-b-0" : "-left-2 border-r-0 border-t-0"}`} />
                       <p className={`text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2 ${isPatient ? "text-secondary justify-end" : "text-accent"}`}>
                         {isPatient ? "Patient" : "AI Agent"}

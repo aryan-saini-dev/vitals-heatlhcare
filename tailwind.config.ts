@@ -59,6 +59,17 @@ export default {
           DEFAULT: "hsl(var(--quaternary))",
           foreground: "hsl(var(--quaternary-foreground))",
         },
+        medical: {
+          blue: "#1E5AA8",
+          "blue-hover": "#164A8A",
+          surface: "#F4F8FD",
+          purple: "#C084FC",
+          "purple-soft": "#F3E8FF",
+          mint: "#34D399",
+          "mint-soft": "#ECFDF5",
+          amber: "#FBBF24",
+          "amber-soft": "#FFFBEB",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -73,7 +84,7 @@ export default {
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
+        sm: "calc(var(--radius) - 12px)",
       },
       borderWidth: {
         chunky: "2px",

@@ -62,7 +62,7 @@ export default function DashboardLayout() {
   return (
     <div className="flex h-screen bg-background font-body overflow-hidden">
       {/* Sidebar (Desktop) */}
-      <aside className="hidden md:flex flex-col w-60 lg:w-64 border-r-2 border-border bg-card shadow-[4px_0_0_0_rgba(30,41,59,0.05)] z-20 shrink-0">
+      <aside className="hidden md:flex flex-col w-60 lg:w-64 border-r-2 border-border bg-card shadow-soft z-20 shrink-0">
         <Link
           to="/"
           className="p-5 h-18 flex items-center border-b-2 border-border border-dashed font-heading font-extrabold text-xl text-foreground hover:bg-muted/50 transition-colors"
@@ -83,7 +83,7 @@ export default function DashboardLayout() {
                 to={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-bold transition-all duration-200 text-sm ${
                   isActive
-                    ? "bg-secondary text-white border-2 border-border shadow-pop translate-x-1"
+                    ? "bg-primary text-white border-2 border-border shadow-pop translate-x-1"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground border-2 border-transparent"
                 }`}
               >
@@ -179,7 +179,7 @@ export default function DashboardLayout() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center gap-3 p-3 rounded-lg font-bold border-2 text-sm transition-all ${
                         isActive
-                          ? "bg-secondary text-white border-border shadow-pop"
+                          ? "bg-primary text-white border-border shadow-pop"
                           : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >

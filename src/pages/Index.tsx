@@ -17,15 +17,15 @@ const Index = () => {
       {/* Top Header for Auth */}
       <header className="absolute top-0 right-0 p-6 z-50 flex gap-4">
          {!user ? (
-           <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-card font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#1E293B] transition-all text-secondary whitespace-nowrap">
+           <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-card font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-pop-hover transition-all text-primary whitespace-nowrap">
              <LogIn className="w-5 h-5" /> Sign In
            </Link>
          ) : (
            <>
-             <Link to="/dashboard" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-accent text-white font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#1E293B] transition-all whitespace-nowrap">
+             <Link to="/dashboard" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-accent text-white font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-pop-hover transition-all whitespace-nowrap">
                <LayoutDashboard className="w-5 h-5" /> Dashboard
              </Link>
-             <button onClick={() => signOut()} className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-card font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#1E293B] transition-all text-destructive whitespace-nowrap">
+             <button onClick={() => signOut()} className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border bg-card font-heading font-bold shadow-pop hover:-translate-y-1 hover:shadow-pop-hover transition-all text-destructive whitespace-nowrap">
                <LogOut className="w-5 h-5" /> Log Out
              </button>
            </>

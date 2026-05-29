@@ -50,7 +50,7 @@ export default function Agents() {
              const highlight = colors[i % colors.length];
 
              return (
-              <div key={agent.id} className="relative bg-card border-2 border-border rounded-xl p-6 shadow-soft group hover:-translate-y-1 hover:rotate-[1deg] hover:shadow-[6px_6px_0_0_#1E293B] transition-all duration-300">
+              <div key={agent.id} className="relative bg-card border-2 border-border rounded-xl p-6 shadow-soft group hover:-translate-y-1 hover:rotate-[1deg] hover:shadow-sticker-elevated transition-all duration-300">
                 <div className={`absolute top-0 right-0 w-24 h-24 ${highlight} opacity-10 rounded-bl-full pointer-events-none`}></div>
                 
                 <div className="flex items-start gap-4 mb-4">

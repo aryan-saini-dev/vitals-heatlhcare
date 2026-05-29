@@ -107,7 +107,7 @@ export default function Patients() {
                       {patient.agent_name}
                     </td>
                     <td className="p-4 text-right">
-                      <Link to={`/dashboard/patients/${patient.id}`} className="inline-block px-4 py-2 bg-secondary text-white font-bold rounded-full border-2 border-border hover:-translate-y-1 hover:shadow-[4px_4px_0_0_#1E293B] transition-all">View</Link>
+                      <Link to={`/dashboard/patients/${patient.id}`} className="inline-block px-4 py-2 bg-primary text-white font-bold rounded-full border-2 border-border hover:-translate-y-1 hover:shadow-pop-hover transition-all">View</Link>
                     </td>
                   </tr>
                 ))}

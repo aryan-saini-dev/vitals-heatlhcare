@@ -107,10 +107,10 @@ export default function Overview() {
   };
 
   const statCards = [
-    { name: "Patients", value: stats.patients, icon: Users, color: "bg-tertiary", shadowHover: "hover:shadow-[8px_8px_0_0_rgb(251,191,36)]", link: "/dashboard/patients" },
-    { name: "Active Alerts", value: stats.alerts, icon: Bell, color: "bg-secondary", shadowHover: "hover:shadow-[8px_8px_0_0_rgb(244,114,182)]", link: "/dashboard/alerts" },
-    { name: "Care Agents", value: stats.agents, icon: Bot, color: "bg-accent", shadowHover: "hover:shadow-[8px_8px_0_0_rgb(139,92,246)]", link: "/dashboard/agents" },
-    { name: "Total Calls", value: stats.calls, icon: Phone, color: "bg-quaternary", shadowHover: "hover:shadow-[8px_8px_0_0_rgb(52,211,153)]", link: "/dashboard/calls" },
+    { name: "Patients", value: stats.patients, icon: Users, color: "bg-tertiary", shadowHover: "hover:shadow-sticker-elevated", link: "/dashboard/patients" },
+    { name: "Active Alerts", value: stats.alerts, icon: Bell, color: "bg-secondary", shadowHover: "hover:shadow-sticker-elevated", link: "/dashboard/alerts" },
+    { name: "Care Agents", value: stats.agents, icon: Bot, color: "bg-accent", shadowHover: "hover:shadow-sticker-elevated", link: "/dashboard/agents" },
+    { name: "Total Calls", value: stats.calls, icon: Phone, color: "bg-quaternary", shadowHover: "hover:shadow-sticker-elevated", link: "/dashboard/calls" },
   ];
 
   return (

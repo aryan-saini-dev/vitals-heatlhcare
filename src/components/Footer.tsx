@@ -11,7 +11,7 @@ const Footer = () => {
           VITALS
         </div>
         <p className="text-muted-foreground text-sm text-center">
-          Agentic AI Healthcare — Stellaris 2026 • Team Unfazed • ABESIT
+          Agentic AI Healthcare • Team V.I.T.A.L.S • All rights reserved.
         </p>
         <div className="flex gap-3">
           {["Privacy", "Terms", "Contact"].map((link) => (

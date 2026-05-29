@@ -74,7 +74,7 @@ export default function CreateAgent() {
            </div>
 
            <div className="pt-8 flex justify-end border-t-2 border-border border-dashed">
-             <button type="submit" disabled={loading} className="w-full md:w-auto inline-flex items-center justify-center gap-3 h-16 px-10 bg-accent text-white font-heading font-extrabold rounded-full border-2 border-border shadow-pop hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0_0_#1E293B] active:translate-y-1 active:translate-x-1 active:shadow-pop-active transition-all text-xl tracking-wide uppercase">
+             <button type="submit" disabled={loading} className="w-full md:w-auto inline-flex items-center justify-center gap-3 h-16 px-10 bg-accent text-white font-heading font-extrabold rounded-full border-2 border-border shadow-pop hover:-translate-y-1 hover:-translate-x-1 hover:shadow-pop-hover active:translate-y-1 active:translate-x-1 active:shadow-pop-active transition-all text-xl tracking-wide uppercase">
                 <Save className="w-6 h-6" strokeWidth={3} /> {loading ? "Deploying..." : "Activate Agent"}
              </button>
            </div>

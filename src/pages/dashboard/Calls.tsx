@@ -100,7 +100,7 @@ export default function Calls() {
     if (!d) return null;
     const isApproved = d === "approved";
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${isApproved ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-rose-50 text-rose-700 border-rose-300"}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${isApproved ? "bg-quaternary/15 text-foreground border-quaternary/30" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
         {isApproved ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
         {d.charAt(0).toUpperCase() + d.slice(1)}
       </span>
@@ -176,8 +176,8 @@ export default function Calls() {
                         {(() => {
                           const t = String(call.transcript || call.vitals_data?.CallTranscript || "").trim();
                           return t
-                            ? <div className="text-xs font-bold text-emerald-800 mt-1">Transcript · {t.length.toLocaleString()} chars</div>
-                            : <div className="text-xs font-bold text-amber-800 mt-1">No transcript text</div>;
+                            ? <div className="text-xs font-bold text-foreground mt-1">Transcript · {t.length.toLocaleString()} chars</div>
+                            : <div className="text-xs font-bold text-foreground mt-1">No transcript text</div>;
                         })()}
                       </td>
                       <td className="p-4 font-extrabold text-foreground">{call.patient_name}</td>
@@ -196,8 +196,8 @@ export default function Calls() {
                           decisionBadge(call.vitals_data.DoctorDecision)
                         ) : (
                           <div className="flex items-center justify-center gap-1.5">
-                            <button type="button" onClick={() => setDecision(call, "approved")} className="px-2.5 py-1 text-xs font-bold border-2 border-border rounded bg-emerald-100 hover:bg-emerald-200 transition-colors">✓</button>
-                            <button type="button" onClick={() => setDecision(call, "denied")} className="px-2.5 py-1 text-xs font-bold border-2 border-border rounded bg-rose-100 hover:bg-rose-200 transition-colors">✕</button>
+                            <button type="button" onClick={() => setDecision(call, "approved")} className="px-2.5 py-1 text-xs font-bold border-2 border-border rounded bg-quaternary/15 hover:bg-quaternary/25 transition-colors">✓</button>
+                            <button type="button" onClick={() => setDecision(call, "denied")} className="px-2.5 py-1 text-xs font-bold border-2 border-border rounded bg-destructive/10 hover:bg-destructive/15 transition-colors">✕</button>
                           </div>
                         )}
                       </td>
@@ -212,7 +212,7 @@ export default function Calls() {
                         </button>
                       </td>
                       <td className="p-4 text-right">
-                        <Link to={`/dashboard/calls/${call.id}`} className="inline-block px-4 py-2 bg-quaternary text-white font-heading font-bold rounded-full border-2 border-border hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1E293B] transition-all text-xs whitespace-nowrap">
+                        <Link to={`/dashboard/calls/${call.id}`} className="inline-block px-4 py-2 bg-primary text-white font-heading font-bold rounded-full border-2 border-border hover:-translate-y-0.5 hover:shadow-pop-hover transition-all text-xs whitespace-nowrap">
                           View →
                         </Link>
                       </td>
@@ -252,15 +252,15 @@ export default function Calls() {
                   {(() => {
                     const t = String(call.transcript || call.vitals_data?.CallTranscript || "").trim();
                     return t
-                      ? <div className="text-xs font-bold text-emerald-800">Transcript · {t.length.toLocaleString()} chars</div>
-                      : <div className="text-xs font-bold text-amber-800">No transcript text</div>;
+                      ? <div className="text-xs font-bold text-foreground">Transcript · {t.length.toLocaleString()} chars</div>
+                      : <div className="text-xs font-bold text-foreground">No transcript text</div>;
                   })()}
                   {/* Row 5: actions */}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {!call.vitals_data?.DoctorDecision && (
                       <>
-                        <button type="button" onClick={() => setDecision(call, "approved")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-emerald-100 hover:bg-emerald-200 transition-colors">Approve</button>
-                        <button type="button" onClick={() => setDecision(call, "denied")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-rose-100 hover:bg-rose-200 transition-colors">Deny</button>
+                        <button type="button" onClick={() => setDecision(call, "approved")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-quaternary/15 hover:bg-quaternary/25 transition-colors">Approve</button>
+                        <button type="button" onClick={() => setDecision(call, "denied")} className="px-3 py-1.5 text-xs font-bold border-2 border-border rounded bg-destructive/10 hover:bg-destructive/15 transition-colors">Deny</button>
                       </>
                     )}
                     <button
@@ -271,7 +271,7 @@ export default function Calls() {
                     >
                       <FileText className="w-3.5 h-3.5" /> PDF
                     </button>
-                    <Link to={`/dashboard/calls/${call.id}`} className="ml-auto inline-block px-4 py-1.5 bg-quaternary text-white font-heading font-bold rounded-full border-2 border-border text-xs whitespace-nowrap">
+                    <Link to={`/dashboard/calls/${call.id}`} className="ml-auto inline-block px-4 py-1.5 bg-primary text-white font-heading font-bold rounded-full border-2 border-border text-xs whitespace-nowrap">
                       View →
                     </Link>
                   </div>

@@ -28,3 +28,12 @@ dist-ssr
 .env.*
 backend/.env
 backend/.env.*
+
+# WhatsApp Web JS
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Session files
+session/
+Cache/
+Cache_Data/
