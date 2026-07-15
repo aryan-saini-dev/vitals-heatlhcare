@@ -1,10 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://placeholder-vitals-project.supabase.co";
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "placeholder-anon-key";
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase environment variables. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env.local");
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    "Missing VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables. Supabase will default to placeholder endpoints."
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

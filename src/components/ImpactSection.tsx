@@ -1,103 +1,124 @@
-import { Stethoscope, HeartPulse, Users } from "lucide-react";
-import doctorDashboard from "@/assets/doctor-dashboard.png";
+import {
+  Users, Stethoscope, HeartPulse, CheckCircle2, Heart, Activity, AlertTriangle, Sparkles
+} from "lucide-react";
 
-const impacts = [
-  {
-    icon: Users,
-    title: "Nurses & Hospital Staff",
-    color: "bg-primary",
-    items: [
-      "Eliminates manual monitoring overload",
-      "Automated repetitive follow-up calls reduces burnout",
-      "Acknowledge critical alerts instantly",
-    ],
-  },
-  {
-    icon: Stethoscope,
-    title: "Doctors",
-    color: "bg-secondary",
-    featured: true,
-    items: [
-      "Recovers 80% of consultation time",
-      "AI reports help in faster diagnosis",
-      "Easy dosage change approvals",
-      "Automated appointment scheduling",
-    ],
-  },
-  {
-    icon: HeartPulse,
-    title: "Chronic Patients",
-    color: "bg-quaternary",
-    items: [
-      "Prevents emergencies via early detection",
-      "Continuous, proactive health support",
-      "Multilingual voice conversations",
-    ],
-  },
-];
-
-const ImpactSection = () => {
+function Pill({ icon: Icon, children, color = "primary" }: { icon: any; children: React.ReactNode; color?: string }) {
+  const colorMap: Record<string, string> = {
+    primary: "text-primary bg-primary/10 ring-primary/15",
+    success: "text-success bg-success/10 ring-success/20",
+    info: "text-info bg-info/10 ring-info/20",
+    warning: "text-[color:var(--warning)] bg-[color:var(--warning)]/10 ring-[color:var(--warning)]/20",
+  };
   return (
-    <section className="relative py-20 md:py-28 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16 space-y-4">
-          <span className="inline-block px-4 py-2 rounded-full bg-secondary text-secondary-foreground font-heading font-bold text-sm border-2 border-foreground shadow-pop">
-            Impact & Benefits
-          </span>
-          <h2 className="font-heading font-extrabold text-3xl md:text-5xl">
-            Who <span className="text-quaternary">Benefits</span>?
-          </h2>
-        </div>
+    <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ring-1 ${colorMap[color]}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {children}
+    </span>
+  );
+}
 
-        {/* Doctor dashboard illustration */}
-        <div className="flex justify-center mb-12">
-          <div className="relative bg-card border-2 border-foreground rounded-2xl shadow-pop p-4 max-w-lg">
-            <img
-              src={doctorDashboard}
-              alt="Doctor reviewing AI-powered health dashboard"
-              width={800}
-              height={600}
-              loading="lazy"
-              className="w-full rounded-lg"
-            />
-            <div className="absolute -top-3 -right-3 px-3 py-1 rounded-full bg-tertiary text-tertiary-foreground font-heading font-bold text-xs border-2 border-foreground shadow-pop">
-              AI Dashboard
+function SectionHeader({ pill, pillIcon, pillColor, title, accent, sub }: any) {
+  return (
+    <div className="mx-auto max-w-3xl text-center">
+      <Pill icon={pillIcon} color={pillColor}>{pill}</Pill>
+      <h2 className="mt-5 font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+        {title} <span className="text-gradient-primary">{accent}</span>
+      </h2>
+      <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">{sub}</p>
+    </div>
+  );
+}
+
+export default function ImpactSection() {
+  const groups = [
+    {
+      icon: Users, color: "primary", title: "Nurses & Hospital Staff",
+      points: ["Eliminates manual monitoring overload", "Automated repetitive follow-ups reduce burnout", "Real-time alerts for critical situations", "More time for high-value patient care"],
+    },
+    {
+      icon: Stethoscope, color: "info", title: "Doctors",
+      points: ["Recovers 80%+ of consultation time", "AI reports help in faster, accurate diagnosis", "Easy dosage change approvals", "Automated appointment scheduling"],
+    },
+    {
+      icon: HeartPulse, color: "success", title: "Chronic Patients",
+      points: ["Prevents emergencies via early detection", "Continuous, proactive health support", "Multilingual voice conversations", "Better health outcomes & peace of mind"],
+    },
+  ];
+
+  const iconBg: Record<string, string> = {
+    primary: "bg-primary text-primary-foreground",
+    info: "bg-info text-white",
+    success: "bg-success text-white",
+  };
+
+  const check: Record<string, string> = {
+    primary: "text-primary", info: "text-info", success: "text-success",
+  };
+
+  return (
+    <section id="impact" className="py-24">
+      <div className="mx-auto max-w-7xl px-6">
+        <SectionHeader
+          pill="Impact & Benefits"
+          pillIcon={Heart}
+          pillColor="info"
+          title="Who"
+          accent="Benefits?"
+          sub="VITALS AI creates measurable impact across your entire care ecosystem."
+        />
+
+        {/* Dashboard preview */}
+        <div className="mx-auto mt-12 max-w-4xl rounded-2xl border border-border bg-gradient-to-br from-card to-secondary/40 p-6 shadow-card">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <Sparkles className="h-3 w-3" /> AI Dashboard
             </div>
+            <div className="flex gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-destructive/50" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--warning)]/60" />
+              <span className="h-2.5 w-2.5 rounded-full bg-success/60" />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {[
+              { label: "Patient Trends", value: "+24%", icon: Activity, color: "primary" },
+              { label: "Check-ins", value: "98%", icon: CheckCircle2, color: "success" },
+              { label: "High Priority Alerts", value: "3", icon: AlertTriangle, color: "warning" },
+              { label: "Satisfaction", value: "4.8/5", icon: Heart, color: "info" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-xl border border-border bg-card p-4 hover-lift">
+                <c.icon className={`h-4 w-4 ${c.color === "primary" ? "text-primary" :
+                  c.color === "success" ? "text-success" :
+                    c.color === "warning" ? "text-[color:var(--warning)]" : "text-info"
+                  }`} />
+                <div className="mt-2 font-display text-2xl font-bold text-foreground">{c.value}</div>
+                <div className="text-xs text-muted-foreground">{c.label}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 items-start">
-          {impacts.map((impact) => {
-            const Icon = impact.icon;
-            return (
-              <div
-                key={impact.title}
-                className={`relative bg-card border-2 border-foreground rounded-xl p-6 ${impact.featured ? 'shadow-pink md:scale-105 md:-translate-y-2' : 'shadow-soft'} hover:-rotate-1 hover:scale-[1.02] transition-all duration-300 ease-bounce`}
-              >
-                {impact.featured && (
-                  <div className="absolute -top-5 -right-3 bg-tertiary text-tertiary-foreground px-3 py-1 rounded-full font-heading font-bold text-xs border-2 border-foreground shadow-pop rotate-12">
-                    ★ KEY IMPACT
-                  </div>
-                )}
-                <div className={`w-14 h-14 ${impact.color} rounded-full flex items-center justify-center border-2 border-foreground mb-4`}>
-                  <Icon className="w-7 h-7 text-card" strokeWidth={2.5} />
+        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          {groups.map((g) => (
+            <article key={g.title} className="group rounded-2xl border border-border bg-card p-7 shadow-card hover-lift">
+              <div className="flex items-center gap-3">
+                <div className={`grid h-12 w-12 place-items-center rounded-xl ${iconBg[g.color]} shadow-soft transition-transform group-hover:rotate-6`}>
+                  <g.icon className="h-6 w-6" />
                 </div>
-                <h3 className="font-heading font-bold text-xl mb-4">{impact.title}</h3>
-                <ul className="space-y-3">
-                  {impact.items.map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="mt-1 w-2 h-2 rounded-full bg-quaternary shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="font-display text-xl font-bold text-foreground">{g.title}</h3>
               </div>
-            );
-          })}
+              <ul className="mt-6 space-y-3">
+                {g.points.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                    <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${check[g.color]}`} />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
         </div>
       </div>
     </section>
   );
-};
-
-export default ImpactSection;
+}

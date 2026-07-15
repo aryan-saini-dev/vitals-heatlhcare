@@ -47,7 +47,13 @@ try {
   LocalAuth = wweb.LocalAuth;
   MessageMedia = wweb.MessageMedia;
 
-  waClient = new WAClient({ authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }) });
+  waClient = new WAClient({
+    authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
+    puppeteer: {
+      executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    }
+  });
   waClient.on("qr", (qr: string) => {
     console.log("\n[WhatsApp] ====== SCAN QR CODE =====");
     qrcode.generate(qr, { small: true });
@@ -961,7 +967,7 @@ app.get("/api/whatsapp/status", (_req, res) => {
 
 /** POST /api/whatsapp/send-report/:callId
  *  Manually send a call's PDF report to the patient's WhatsApp number. */
-app.post("/api/whatsapp/send-report/:callId", async (req, res) => {
+app.post(["/api/whatsapp/send-report/:callId", "/api/calls/:callId/report/send-whatsapp"], async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
@@ -1058,7 +1064,7 @@ app.post("/api/whatsapp/send-report/:callId", async (req, res) => {
 
 app.get("/api/debug/vapi-config", (_req, res) => {
   const phoneNumberId = process.env.VAPI_PHONE_NUMBER_ID || "";
-  const assistantId = process.env.VAPI_ASSISTANT_ID || "";
+  const assistantId = process.env.VAPI_ASSISTANT_ID || process.env.VITE_VAPI_AGENT_ID || "";
   return res.json({
     hasVapiApiKey: Boolean(process.env.VAPI_API_KEY),
     assistantId,
@@ -1196,7 +1202,10 @@ app.post("/api/vapi/outbound-call", async (req, res) => {
     }
 
     const patient = patientRes.data as any;
-    const assistantId = requireEnv("VAPI_ASSISTANT_ID");
+    const assistantId = process.env.VAPI_ASSISTANT_ID || process.env.VITE_VAPI_AGENT_ID || "";
+    if (!assistantId) {
+      throw new Error("Missing env var: VAPI_ASSISTANT_ID (or VITE_VAPI_AGENT_ID)");
+    }
     const phoneNumberId = requireEnv("VAPI_PHONE_NUMBER_ID");
     const assistantMisconfig = await detectAssistantMisconfig(assistantId);
     if (assistantMisconfig) {
@@ -1693,7 +1702,7 @@ app.post("/api/calls/:callId/decision", async (req, res) => {
  *
  * Does NOT affect any existing routes or the webhook pipeline.
  */
-app.post("/api/calls/:callId/generate-report", async (req, res) => {
+app.post(["/api/calls/:callId/generate-report", "/api/calls/:callId/report/generate"], async (req, res) => {
   try {
     const { callId } = req.params;
     const authHeader = String(req.headers.authorization || "");

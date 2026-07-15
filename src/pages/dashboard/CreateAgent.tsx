@@ -1,7 +1,7 @@
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Sparkles } from "lucide-react";
 
@@ -11,7 +11,7 @@ export default function CreateAgent() {
   const [formData, setFormData] = useState({
     name: "",
     specialty: "",
-    description: ""
+    description: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -19,11 +19,13 @@ export default function CreateAgent() {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
-    
-    const { error } = await supabase.from("agents").insert([{
-      ...formData,
-      docuuid: user.id
-    }]);
+
+    const { error } = await supabase.from("agents").insert([
+      {
+        ...formData,
+        docuuid: user.id,
+      },
+    ]);
 
     if (error) {
       toast.error(error.message);
@@ -35,50 +37,77 @@ export default function CreateAgent() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/dashboard/agents" className="inline-flex items-center text-muted-foreground hover:text-foreground font-bold transition-colors mb-4">
-        <ArrowLeft className="w-5 h-5 mr-2" /> Back to Agents
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-up">
+      <Link
+        to="/dashboard/agents"
+        className="inline-flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-2"
+      >
+        <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Agents
       </Link>
 
-      <div className="bg-card border-2 border-border shadow-soft rounded-xl p-6 md:p-10 relative overflow-hidden">
-         {/* Background Decoration */}
-         <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-accent rounded-full mix-blend-multiply opacity-10 blur-3xl pointer-events-none"></div>
-         <div className="absolute top-10 right-10 w-20 h-20 bg-secondary blob-radius mix-blend-multiply opacity-20 blur-xl pointer-events-none"></div>
-         
-         <div className="relative z-10 flex items-center gap-4 mb-10">
-           <div className="w-16 h-16 rounded-full bg-accent border-2 border-border shadow-pop flex items-center justify-center text-white shrink-0 animate-wiggle">
-             <Sparkles className="w-7 h-7" />
-           </div>
-           <div>
-             <h1 className="text-3xl font-heading font-extrabold text-foreground tracking-tight">Configure New Agent</h1>
-             <p className="text-muted-foreground font-medium mt-1">Define the specialty and persona of this AI monitor.</p>
-           </div>
-         </div>
+      <div className="bg-card border border-border/60 shadow-card rounded-2xl p-6 md:p-8 relative overflow-hidden">
+        <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-primary/5 rounded-full blur-2xl pointer-events-none"></div>
 
-         <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="space-y-2">
-               <label className="text-xs font-heading font-bold uppercase tracking-widest text-muted-foreground">Agent Name</label>
-               <input required type="text" className="w-full h-14 px-4 bg-input border-2 border-border rounded-lg focus:outline-none focus:border-accent focus:shadow-pop transition-all font-bold text-foreground text-lg" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Dr. CardioBot" />
-             </div>
-             
-             <div className="space-y-2">
-               <label className="text-xs font-heading font-bold uppercase tracking-widest text-muted-foreground">Specialty Domain</label>
-               <input required type="text" className="w-full h-14 px-4 bg-input border-2 border-border rounded-lg focus:outline-none focus:border-tertiary focus:shadow-pop transition-all font-bold text-foreground text-lg" value={formData.specialty} onChange={e => setFormData({...formData, specialty: e.target.value})} placeholder="e.g. Chronic Heart Failure" />
-             </div>
-           </div>
+        <div className="relative z-10 flex items-center gap-3.5 mb-8">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-extrabold text-foreground tracking-tight">Deploy Care Agent</h1>
+            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              Define instructions and specialty contexts for the conversational voice monitor.
+            </p>
+          </div>
+        </div>
 
-           <div className="space-y-2">
-             <label className="text-xs font-heading font-bold uppercase tracking-widest text-muted-foreground">Operating Instructions / Profile</label>
-             <textarea required className="w-full h-40 p-5 bg-input border-2 border-border rounded-lg focus:outline-none focus:border-secondary focus:shadow-pop transition-all font-medium text-foreground resize-none text-base leading-relaxed" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Describe what this agent should strictly monitor. e.g. 'This agent calls the patient daily checking for fluid retention, rapid weight gain, and shortness of breath...'" />
-           </div>
+        <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agent Name</label>
+              <input
+                required
+                type="text"
+                className="w-full h-10 px-4 bg-background border border-border/80 rounded-xl focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 text-sm font-medium text-foreground transition-all"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Dr. CardioBot"
+              />
+            </div>
 
-           <div className="pt-8 flex justify-end border-t-2 border-border border-dashed">
-             <button type="submit" disabled={loading} className="w-full md:w-auto inline-flex items-center justify-center gap-3 h-16 px-10 bg-accent text-white font-heading font-extrabold rounded-full border-2 border-border shadow-pop hover:-translate-y-1 hover:-translate-x-1 hover:shadow-pop-hover active:translate-y-1 active:translate-x-1 active:shadow-pop-active transition-all text-xl tracking-wide uppercase">
-                <Save className="w-6 h-6" strokeWidth={3} /> {loading ? "Deploying..." : "Activate Agent"}
-             </button>
-           </div>
-         </form>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Specialty Domain</label>
+              <input
+                required
+                type="text"
+                className="w-full h-10 px-4 bg-background border border-border/80 rounded-xl focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 text-sm font-medium text-foreground transition-all"
+                value={formData.specialty}
+                onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                placeholder="e.g. Chronic Heart Failure"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Instructions / Prompt Profile</label>
+            <textarea
+              required
+              className="w-full h-36 p-4 bg-background border border-border/80 rounded-xl focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 text-sm font-medium text-foreground resize-none leading-relaxed transition-all"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe what questions the agent should ask. e.g., 'Check if the patient has fluid retention, sudden weight gain (e.g., more than 2 lbs in 24 hours), or severe shortness of breath.'"
+            />
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 h-10 px-6 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
+            >
+              <Save className="w-4 h-4" /> {loading ? "Deploying..." : "Deploy Agent"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

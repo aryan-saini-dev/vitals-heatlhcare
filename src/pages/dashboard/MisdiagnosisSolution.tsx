@@ -97,60 +97,80 @@ export default function MisdiagnosisSolution() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl font-heading font-extrabold tracking-tight">Misdiagnosis Solution</h1>
-        <p className="text-muted-foreground mt-2 font-medium">
-          Frontend simulation: record diagnosis transcription, generate mock hash, export accountability PDF.
+    <div className="space-y-8 animate-fade-up">
+      {/* Header */}
+      <div className="border-b border-border/40 pb-5">
+        <h1 className="text-3xl font-display font-extrabold tracking-tight text-foreground">Misdiagnosis Solution</h1>
+        <p className="mt-1 text-sm text-muted-foreground font-medium">
+          Frontend simulation to record diagnosis transcription, generate mock accountability hash, and export PDFs.
         </p>
       </div>
 
-      <div className="bg-card border-2 border-border rounded-xl shadow-soft p-6 space-y-4">
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-card border border-border/60 rounded-2xl shadow-card p-6 space-y-6">
+        {/* Buttons Panel */}
+        <div className="flex flex-wrap gap-2.5">
           <button
             type="button"
             onClick={startDiagnosisTranscription}
             disabled={isListening}
-            className="px-4 py-3 rounded-xl border-2 border-foreground bg-tertiary font-bold disabled:opacity-50 inline-flex items-center gap-2"
+            className="inline-flex items-center gap-1.5 h-10 px-5 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 cursor-pointer"
           >
-            <Mic className="w-4 h-4" /> Start Diagnosis Transcription
+            <Mic className="w-4 h-4" /> Start Recording
           </button>
           <button
             type="button"
             onClick={endDiagnosisAndGenerate}
-            className="px-4 py-3 rounded-xl border-2 border-foreground bg-white font-bold inline-flex items-center gap-2"
+            disabled={!isListening}
+            className="inline-flex items-center gap-1.5 h-10 px-5 bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground border border-destructive/20 text-destructive font-bold rounded-xl transition-all disabled:opacity-50 cursor-pointer"
           >
-            <Square className="w-4 h-4" /> End Diagnosis
+            <Square className="w-4 h-4" /> Stop & Hash
           </button>
           <button
             type="button"
             onClick={downloadPrescriptionPdf}
-            className="px-4 py-3 rounded-xl border-2 border-foreground bg-quaternary text-white font-bold inline-flex items-center gap-2"
+            disabled={!transcript.trim()}
+            className="inline-flex items-center gap-1.5 h-10 px-5 bg-success/15 hover:bg-success hover:text-success-foreground border border-success/20 text-success font-bold rounded-xl transition-all disabled:opacity-50 cursor-pointer"
           >
             <FileText className="w-4 h-4" /> Download Prescription PDF
           </button>
         </div>
 
-        <p className="text-sm font-semibold text-muted-foreground">Status: {status}</p>
-        {liveText && <p className="text-sm italic">Live: {liveText}</p>}
-
-        <div className="border-2 border-border rounded-xl p-4 bg-background">
-          <p className="text-xs uppercase font-black text-muted-foreground mb-2">Stored Multilingual Transcription</p>
-          <p className="text-sm whitespace-pre-wrap min-h-[120px]">{transcript || "No transcription stored yet."}</p>
+        {/* Status */}
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Status: <span className="text-foreground">{status}</span>
         </div>
 
-        <div className="border-2 border-border rounded-xl p-4 bg-muted/30">
-          <p className="text-xs uppercase font-black text-muted-foreground mb-2 inline-flex items-center gap-2">
-            <Fingerprint className="w-4 h-4" /> Blockchain Hash (Simulation)
+        {liveText && (
+          <p className="text-xs text-primary font-medium italic animate-pulse">
+            Live Stream: {liveText}
           </p>
-          <p className="text-xs font-mono break-all">{mockHash || "Will be generated after ending diagnosis."}</p>
+        )}
+
+        {/* Stored Transcription */}
+        <div className="border border-border/60 rounded-xl p-5 bg-background shadow-soft">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+            Captured Transcription
+          </p>
+          <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed min-h-[120px]">
+            {transcript || "No transcription recorded yet. Press 'Start Recording' to stream mic voice..."}
+          </p>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Simulation note: blockchain write/send pipeline is intentionally mocked here and can be wired later.
-        </p>
+        {/* Blockchain Hash Card */}
+        <div className="border border-border/50 rounded-xl p-5 bg-secondary/30">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 inline-flex items-center gap-1.5">
+            <Fingerprint className="w-4 h-4 text-primary" /> Cryptographic Blockchain Hash (Simulation)
+          </p>
+          <p className="text-xs font-mono text-foreground break-all leading-normal bg-background/50 border border-border/40 p-2.5 rounded-lg min-h-[38px] flex items-center">
+            {mockHash || "Awaiting diagnosis completion to generate cryptographic audit hash..."}
+          </p>
+        </div>
+
+        <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl text-[10px] leading-relaxed text-muted-foreground">
+          <span className="font-bold text-foreground">Simulation Notice:</span> The cryptographic hash is generated locally using SHA-256 for audit tracking. In production, this anchors to blockchain ledgers for tamper-proof compliance.
+        </div>
       </div>
     </div>
   );
 }
-

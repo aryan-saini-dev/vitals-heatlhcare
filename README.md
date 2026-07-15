@@ -1,4 +1,4 @@
-# VITALS: AI-powered Autonomous Voice-calling system for proactive patient monitoring and automated clinical documentation
+# VITALS: A RAG-Powered Multilingual AI Voice Agent to detect early illness escalation through automated human-like check-ins (Open-Source Developer Edition)
 
 <p align="center">
   <img src="Assets/Vitals%20Logo.png" alt="VITALS Logo" width="300"/>
@@ -7,6 +7,21 @@
 <p align="center">
   <strong>AI-powered voice calling system for proactive chronic patient monitoring and automated clinical documentation</strong>
 </p>
+
+<p align="center">
+  <strong>🏆 Hacknovate 7.0 Winning Project 🏆</strong>
+</p>
+
+> [!IMPORTANT]
+> ### Production infrastructure is intentionally withheld for security, privacy, and healthcare compliance requirements.
+> **Safety Measure Notice:** As a safety measure before the official release, all backend source code, testing scripts, and other proprietary components have been removed from this repository. This repository is intended strictly to showcase our project architecture, the frontend interface, and our n8n automation / RAG integration, rather than being a fully open-source implementation.
+
+---
+
+## 🎥 Demo Videos
+
+### Project Overview
+[![VITALS Demo Video](https://img.youtube.com/vi/NzspuiscC0k/0.jpg)](https://youtu.be/NzspuiscC0k?si=1qYNsL4viLquzjCD)
 
 ---
 
@@ -18,7 +33,6 @@
 | **Aryan Gusain** | [@AryanGusain-dev](https://github.com/AryanGusain-dev) |
 | **Archee Sinha** | [@ArcheeSinha](https://github.com/ArcheeSinha) |
 | **Darshita Gupta** | [@darshita-gupta](https://github.com/darshita-gupta) |
-| **Atharv Varshney** | [@ATHARV53344](https://github.com/ATHARV53344) |
 
 ---
 
@@ -126,7 +140,20 @@ vitals-heatlhcare/
 
 ---
 
-## � Workflow Diagram
+## ⚙️ Workflow Diagram
+
+### n8n + VITALS Showcase
+This video is a showcase of our n8n + VITALS integration, demonstrating improved fetching of patient details and automated appointment scheduling:
+
+https://github.com/aryan-saini-dev/Vitals-OpenSource-Edition/blob/main/Assets/Vitals-n8n.mp4
+
+### n8n Autonomous Automation
+<p align="center">
+  <img src="Assets/N8N-workflow.png" alt="N8N Workflow Diagram" width="800"/>
+</p>
+
+**Explore the Workflow:** We have made the n8n automation workflow structure freely available for exploration:
+[**[⚙️ vitals-workflow.json]**](n8n/vitals-workflow.json)
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
@@ -155,6 +182,7 @@ vitals-heatlhcare/
 │  └──────────────┘   └──────────────┘   └──────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
 
 ---
 
@@ -190,146 +218,24 @@ The system generates physician-ready PDF reports after each call. View a sample 
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- **Node.js** 18+ and **npm**
-- **Python** 3.10+ (for RAG system)
-- **Git**
+> [!NOTE]
+> The full source code and comprehensive installation guide will be available here when the application is officially open-sourced. For now, you can explore the architecture through our RAG and n8n setups.
 
-### 1. Clone & Install
+### Medical RAG System Setup
 
-```bash
-git clone https://github.com/aryan-saini-dev/vitals-heatlhcare.git
-cd vitals-heatlhcare
-npm install
-```
+We've developed a custom **Retrieval-Augmented Generation (RAG)** pipeline in Python that utilizes ChromaDB and Google Gemini to assist the voice agent with verified medical knowledge.
 
-### 2. Supabase Database Setup
+👉 **[View the RAG System Setup Guide](RAG_vitals/README.md)**
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to **Dashboard** → **SQL Editor** → **New Query**
-3. Copy and paste the contents of [`Supabase Schema/schema.sql`](Supabase%20Schema/schema.sql)
-4. Click **Run** to create all tables (patients, agents, alerts, activities, calls)
+### n8n Automation Setup
 
-**Schema includes:**
-- **patients** – Patient profiles with medical history, medications, appointments
-- **agents** – AI voice agent configurations
-- **alerts** – System alerts for abnormal vitals
-- **activities** – Call/alert/update logs
-- **calls** – Call transcripts, summaries, and vitals data
+The autonomous workflow that drives our system is fully accessible. You can view the structure and import it directly into your own n8n instance:
 
-### 3. Fill Dummy Data (Optional)
-
-To populate your database with sample patients and data:
-
-1. **Seed via SQL:** Run the fake data seeder script
-   ```bash
-   npm run seed:fake-calls
-   ```
-
-2. **Or insert manually via Supabase UI:**
-   - Go to **Table Editor** → **patients** → **Insert Row**
-   - Add sample patients with fields: `name`, `condition`, `contact_number`, `medical_history[]`
-
-### 4. Environment Setup
-
-Copy `.env.example` to `.env.local` and fill in your credentials:
-
-```bash
-cp .env.example .env.local
-```
-
-**Required environment variables:**
-
-```env
-# Supabase (Database + Auth + Storage)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Google Gemini (AI)
-VITE_GEMINI_API_KEY=your-gemini-api-key
-
-# Vapi AI (Voice Calls)
-VITE_VAPI_PUBLIC_KEY=your-vapi-public-key
-VITE_VAPI_AGENT_ID=your-agent-id
-VAPI_API_KEY=your-vapi-api-key
-VAPI_ASSISTANT_ID=your-assistant-id
-VAPI_PHONE_NUMBER_ID=your-phone-number-id
-
-# RAG Webhook (optional)
-rag_query=https://your-rag-webhook-url
-
-# Server
-PORT=4000
-```
-
-### 5. Run Development Server
-
-Start both API and frontend concurrently:
-
-```bash
-npm run dev
-```
-
-- **Frontend:** http://localhost:3001
-- **API Server:** http://localhost:4000
-
-### 6. Run RAG System (Optional)
-
-For the standalone medical Q&A CLI:
-
-```bash
-cd RAG_vitals
-
-# Create virtual environment
-python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-# Activate (macOS/Linux)
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set API key
-set GEMINI_API_KEY=your-key        # Windows
-export GEMINI_API_KEY=your-key     # macOS/Linux
-
-# Run interactive CLI
-python cli.py
-```
+👉 **[View the n8n Workflow JSON](n8n/vitals-workflow.json)**
 
 ---
 
-## 🧪 Testing
 
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npx playwright test
-```
-
----
-
-## 📝 Available Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start API + Frontend concurrently |
-| `npm run dev:web` | Start only Vite frontend |
-| `npm run dev:server` | Start only Express API |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
-| `npm run test` | Run unit tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint |
-| `npm run seed:fake-calls` | Generate fake call data |
-| `npm run free:dev-ports` | Kill processes on dev ports |
-
----
 
 ## 🔗 API Keys Setup Guide
 

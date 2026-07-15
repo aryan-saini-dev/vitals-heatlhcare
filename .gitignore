@@ -10,7 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
 *.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
 
 # Editor directories and files
 .vscode/*
@@ -23,17 +31,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment files (backend + frontend)
+# Environment Secrets
 .env
-.env.*
-backend/.env
-backend/.env.*
+.env.local
+.env.*.local
 
-# WhatsApp Web JS
+# Local Session Caches & Credentials
 .wwebjs_auth/
 .wwebjs_cache/
+.cache/
 
-# Session files
-session/
-Cache/
-Cache_Data/

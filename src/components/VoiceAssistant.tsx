@@ -41,9 +41,9 @@ async function getVapiClient(): Promise<Vapi | null> {
   if (typeof window === "undefined") return null;
   if (vapiClient) return vapiClient;
 
-  // Dynamic import prevents CSP 'unsafe-eval' crashes on initial page load.
-  // If your CSP blocks Vapi at runtime, you will still see errors when you click Start Call.
   const publicKey = import.meta.env.VITE_VAPI_PUBLIC_KEY;
+  console.log("[VapiDebug] VITE_VAPI_PUBLIC_KEY:", publicKey);
+  console.log("[VapiDebug] import.meta.env keys:", Object.keys(import.meta.env || {}));
   if (!publicKey) {
     console.error("Missing VITE_VAPI_PUBLIC_KEY for Vapi Web SDK");
     return null;
@@ -73,6 +73,7 @@ export function VoiceAssistant({
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [transcriptTurns, setTranscriptTurns] = useState<TranscriptTurn[]>([]);
   const onCallFinishedRef = useRef(onCallFinished);
+
   useEffect(() => {
     onCallFinishedRef.current = onCallFinished;
   }, [onCallFinished]);
@@ -84,11 +85,7 @@ export function VoiceAssistant({
   const durationSecondsRef = useRef(0);
   const listenersRegisteredRef = useRef(false);
 
-  // Keep handlers stable so we can correctly unregister.
-  const handleCallEndRef = useRef<(() => void) | null>(null);
-
-  const resolvedAgentId =
-    agentId || import.meta.env.VITE_VAPI_AGENT_ID || "";
+  const resolvedAgentId = agentId || import.meta.env.VITE_VAPI_AGENT_ID || "";
 
   async function ensureEventListeners(vapi: Vapi) {
     if (listenersRegisteredRef.current) return;
@@ -110,9 +107,7 @@ export function VoiceAssistant({
       if (timerRef.current != null) window.clearInterval(timerRef.current);
       timerRef.current = window.setInterval(() => {
         if (callStartedAtRef.current != null) {
-          const diffSeconds = Math.floor(
-            (Date.now() - callStartedAtRef.current) / 1000
-          );
+          const diffSeconds = Math.floor((Date.now() - callStartedAtRef.current) / 1000);
           durationSecondsRef.current = diffSeconds;
           setDurationSeconds(diffSeconds);
         }
@@ -132,11 +127,7 @@ export function VoiceAssistant({
       }
 
       const combinedTranscript = transcriptTurnsRef.current
-        .map((turn) =>
-          turn.speaker === "agent"
-            ? `Agent: ${turn.text}`
-            : `Patient: ${turn.text}`
-        )
+        .map((turn) => (turn.speaker === "agent" ? `Agent: ${turn.text}` : `Patient: ${turn.text}`))
         .join("\n\n");
 
       if (onCallFinishedRef.current) {
@@ -146,7 +137,6 @@ export function VoiceAssistant({
         });
       }
     };
-    handleCallEndRef.current = handleCallEnd;
 
     const handleSpeechStart = () => {
       if (!hasActiveCallRef.current) return;
@@ -165,19 +155,16 @@ export function VoiceAssistant({
     };
 
     const handleMessage = (message: unknown) => {
-      const msg = message as
-        | {
-            type?: string;
-            transcript?: unknown;
-            role?: unknown;
-            isFinal?: unknown;
-            final?: unknown;
-          }
-        | null;
+      const msg = message as {
+        type?: string;
+        transcript?: unknown;
+        role?: unknown;
+        isFinal?: unknown;
+        final?: unknown;
+      } | null;
 
       if (msg?.type !== "transcript" || !msg.transcript) return;
 
-      // Skip interim chunks if Vapi provides finality flags.
       if (typeof msg.isFinal === "boolean" && msg.isFinal === false) return;
       if (typeof msg.final === "boolean" && msg.final === false) return;
 
@@ -188,25 +175,17 @@ export function VoiceAssistant({
       const trimmed = String(msg.transcript).trim();
       if (!trimmed) return;
 
-      const last = transcriptTurnsRef.current[
-        transcriptTurnsRef.current.length - 1
-      ];
+      const last = transcriptTurnsRef.current[transcriptTurnsRef.current.length - 1];
       if (last && last.speaker === speaker && last.text === trimmed) return;
 
       console.log("[Vapi] transcript:", speaker, trimmed);
 
-      transcriptTurnsRef.current = [
-        ...transcriptTurnsRef.current,
-        { speaker, text: trimmed },
-      ];
+      transcriptTurnsRef.current = [...transcriptTurnsRef.current, { speaker, text: trimmed }];
       setTranscriptTurns(transcriptTurnsRef.current);
     };
 
     const handleError = (e: unknown) => {
       console.error("[Vapi] error:", e);
-      const maybe = e as { type?: string; error?: unknown };
-      if (maybe?.type) console.error("[Vapi] error.type:", maybe.type);
-      if (maybe?.error) console.error("[Vapi] error.detail:", maybe.error);
       setErrorMessage("Call error. Please try again.");
       setStatus("error");
       setIsListening(false);
@@ -247,7 +226,7 @@ export function VoiceAssistant({
     const vapi = await getVapiClient();
     if (!vapi) {
       setErrorMessage(
-        "Vapi failed to load. If you see CSP errors about 'eval', allow 'unsafe-eval' for Vapi (or relax CSP for this page)."
+        "Vapi failed to load. Ensure VITE_VAPI_PUBLIC_KEY is configured in your environmental variables."
       );
       return;
     }
@@ -286,7 +265,6 @@ export function VoiceAssistant({
   }
 
   function handleHangUp() {
-    // fire-and-forget: Hangup should be immediate from UI.
     void (async () => {
       const vapi = await getVapiClient();
       if (!vapi) return;
@@ -310,48 +288,48 @@ export function VoiceAssistant({
   else if (status === "error") statusLabel = "Error.";
 
   return (
-    <div className="w-full max-w-xl mx-auto rounded-2xl border-2 border-border bg-card shadow-soft p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="w-full rounded-2xl border border-border bg-card shadow-card p-6 space-y-4">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
+          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
             AI Patient Call
           </p>
-          <p className="text-lg font-heading font-extrabold">
+          <p className="text-base font-display font-extrabold text-foreground">
             {patient ? patient.name : "No patient selected"}
           </p>
           {patient?.condition && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Condition: {patient.condition}
             </p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
+        <div className="text-right shrink-0">
+          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
             Status
           </p>
-          <p className="text-sm font-semibold">{statusLabel}</p>
+          <p className="text-xs font-bold text-foreground">{statusLabel}</p>
           {hasActiveCallRef.current && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Duration: {formatDuration(durationSeconds)}
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
+      <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
         <span
-          className={`inline-flex items-center rounded-full px-3 py-1 border ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 border ${
             isListening
-              ? "border-quaternary text-foreground bg-quaternary/10"
+              ? "border-success/35 text-success bg-success/10 animate-pulse"
               : "border-border text-muted-foreground"
           }`}
         >
           • Listening
         </span>
         <span
-          className={`inline-flex items-center rounded-full px-3 py-1 border ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 border ${
             isSpeaking
-              ? "border-primary text-primary bg-primary/10"
+              ? "border-primary/35 text-primary bg-primary/10"
               : "border-border text-muted-foreground"
           }`}
         >
@@ -370,7 +348,7 @@ export function VoiceAssistant({
             !patient ||
             !callerPhoneNumber.trim()
           }
-          className="flex-1 h-11 rounded-full bg-primary text-white font-heading font-bold border-2 border-border shadow-pop hover:bg-medical-blue-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 h-10 rounded-xl bg-gradient-primary text-primary-foreground font-bold shadow-glow hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 transition-all text-xs"
         >
           {status === "connecting" || status === "requesting-permission"
             ? "Connecting…"
@@ -380,24 +358,24 @@ export function VoiceAssistant({
           type="button"
           onClick={handleHangUp}
           disabled={!hasActiveCallRef.current}
-          className="flex-1 h-11 rounded-full bg-destructive text-white font-heading font-bold border-2 border-border disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 h-10 rounded-xl bg-destructive text-destructive-foreground font-bold hover:bg-destructive/90 disabled:opacity-50 transition-all text-xs"
         >
           Hang Up
         </button>
       </div>
 
       {errorMessage && (
-        <p className="text-xs text-destructive font-semibold">{errorMessage}</p>
+        <p className="text-xs text-destructive font-semibold text-center">{errorMessage}</p>
       )}
 
       {transcriptTurns.length > 0 && (
-        <div className="mt-4 max-h-56 overflow-y-auto rounded-lg border border-border bg-background p-3 space-y-2 text-sm">
+        <div className="mt-4 max-h-56 overflow-y-auto rounded-xl border border-border bg-background p-4 space-y-3 text-xs leading-relaxed">
           {transcriptTurns.map((turn, idx) => (
-            <div key={idx} className="space-x-1">
-              <span className="font-semibold text-muted-foreground">
+            <div key={idx} className="flex gap-2">
+              <span className="font-bold text-muted-foreground uppercase text-[9px] w-12 shrink-0 pt-0.5">
                 {turn.speaker === "agent" ? "AI:" : "Patient:"}
               </span>
-              <span>{turn.text}</span>
+              <span className="text-foreground">{turn.text}</span>
             </div>
           ))}
         </div>
@@ -405,4 +383,3 @@ export function VoiceAssistant({
     </div>
   );
 }
-

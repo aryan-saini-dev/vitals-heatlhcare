@@ -1,22 +1,23 @@
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Activity, AlertTriangle, Clipboard, Phone, Shield, User } from "lucide-react";
-import type { PatientInfo } from "@/components/VoiceAssistant";
-import { useNavigate } from "react-router-dom";
 import { apiUrl } from "@/lib/api";
+import { VoiceAssistant } from "@/components/VoiceAssistant";
+import {
+  Clipboard,
+  Phone,
+  PhoneCall,
+  ArrowRight,
+} from "lucide-react";
 import { toast } from "sonner";
-import { safeRender } from "@/lib/renderUtils";
-
-
-const LISTS_INVALIDATE = "vitals:invalidate-lists";
 
 type CallPhase = "idle" | "dialing" | "completed";
 
 export default function SimulateCall() {
   const navigate = useNavigate();
   const { user, session } = useAuth();
-  const [patients, setPatients] = useState<PatientInfo[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [countryCode, setCountryCode] = useState("+1");
   const [callerNumber, setCallerNumber] = useState("");
@@ -31,12 +32,13 @@ export default function SimulateCall() {
   const [showPostCallPopup, setShowPostCallPopup] = useState(false);
   const [recentCallId, setRecentCallId] = useState<string | null>(null);
   const [recentDbCallId, setRecentDbCallId] = useState<string | null>(null);
+  const [simType, setSimType] = useState<"phone" | "browser">("browser");
+
   const pollTimerRef = useRef<number | null>(null);
   const statusPollRef = useRef<number | null>(null);
   const lastEndedReasonRef = useRef<string | null>(null);
   const summaryDoneRef = useRef(false);
   const pollCountRef = useRef(0);
-  /** Live transcript/duration fallback when Vapi GET omits fields (sync sends these to the API). */
   const transcriptRef = useRef("");
   const callStartedAtRef = useRef<number | null>(null);
 
@@ -46,9 +48,37 @@ export default function SimulateCall() {
     return Math.max(0, Math.round((Date.now() - t0) / 1000));
   }
 
+  function pushDebug(line: string) {
+    const stamp = new Date().toLocaleTimeString();
+    setDebugLogs((prev) => [...prev.slice(-39), `[${stamp}] ${line}`]);
+  }
+
+  useEffect(() => {
+    async function fetchPatients() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("patients")
+        .select("*")
+        .eq("docuuid", user.id)
+        .order("created_at", { ascending: false });
+      if (error) return;
+      if (data) {
+        setPatients(data);
+      }
+    }
+    void fetchPatients();
+  }, [user]);
+
+  const selectedPatient = patients.find((p) => p.id === selectedPatientId) || null;
+
+  const destinationNumberE164 = useMemo(() => {
+    const digits = String(callerNumber || "").replace(/\D/g, "");
+    return digits ? `${countryCode}${digits}` : "";
+  }, [callerNumber, countryCode]);
+
   async function syncCallToDatabase(
     vapiId: string | null,
-    opts?: { transcript?: string; durationSeconds?: number },
+    opts?: { transcript?: string; durationSeconds?: number }
   ): Promise<string | null> {
     if (!session || !vapiId) return null;
     try {
@@ -69,61 +99,23 @@ export default function SimulateCall() {
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         pushDebug(`Sync to DB failed: ${data?.error || resp.status}`);
-        toast.error(data?.error || "Could not save call — check API logs (Gemini / Supabase).");
+        toast.error(data?.error || "Could not save call - check server API.");
         return null;
       }
-      if (data.duplicated) pushDebug("Sync: call already in database (webhook or prior sync).");
-      else pushDebug(`Sync: stored call in database id ${data.callId || "ok"}`);
+      if (data.duplicated) pushDebug("Sync: call already stored in database.");
+      else pushDebug(`Sync: call saved with id ${data.callId}`);
       const dbId = typeof data.callId === "string" ? data.callId : null;
       if (dbId) {
         setRecentDbCallId(dbId);
-        window.dispatchEvent(new CustomEvent(LISTS_INVALIDATE));
-        toast.success("Call saved. Alerts and call log will refresh.");
+        window.dispatchEvent(new Event("vitals:invalidate-lists"));
+        toast.success("Call details synchronized successfully.");
       }
       return dbId;
     } catch (e) {
       pushDebug(`Sync error: ${e instanceof Error ? e.message : "unknown"}`);
-      toast.error("Sync request failed — is the API running?");
       return null;
     }
   }
-
-  function pushDebug(line: string) {
-    const stamp = new Date().toLocaleTimeString();
-    setDebugLogs((prev) => [...prev.slice(-39), `[${stamp}] ${line}`]);
-  }
-
-  useEffect(() => {
-    async function fetchPatients() {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .eq("docuuid", user.id)
-        .order("created_at", { ascending: false });
-      if (error) return;
-      if (data) {
-        setPatients(
-          data.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            condition: p.condition,
-            age: p.age,
-            risk_level: p.risk_level,
-            assigned_agent_id: p.assigned_agent_id,
-            date_of_birth: p.date_of_birth,
-          })),
-        );
-      }
-    }
-    fetchPatients();
-  }, [user]);
-
-  const selectedPatient = patients.find((p) => p.id === selectedPatientId) || null;
-  const destinationNumberE164 = useMemo(() => {
-    const digits = String(callerNumber || "").replace(/\D/g, "");
-    return digits ? `${countryCode}${digits}` : "";
-  }, [callerNumber, countryCode]);
 
   async function buildSummaryFromDb(opts?: { sinceMs?: number; vapiCallId?: string | null }) {
     if (!session || !selectedPatient) return null;
@@ -178,8 +170,8 @@ export default function SimulateCall() {
             "DoctorDecisionAt",
             "DoctorEmail",
             "CallTranscript",
-          ].includes(k),
-      ),
+          ].includes(k)
+      )
     );
 
     const differentials = Array.isArray(vitals.DifferentialDiagnosis)
@@ -219,7 +211,7 @@ export default function SimulateCall() {
     pollCountRef.current = 0;
     setRecentDbCallId(null);
     transcriptRef.current = "";
-    callStartedAtRef.current = null;
+    callStartedAtRef.current = Date.now();
     pushDebug("Starting outbound call request");
 
     let createdCallId: string | null = null;
@@ -241,13 +233,9 @@ export default function SimulateCall() {
       createdCallId = data.vapiCallId || null;
       setVapiCallId(createdCallId);
       setRecentCallId(createdCallId);
-      callStartedAtRef.current = Date.now();
-      console.log("[UI] vapiCallId:", data.vapiCallId);
-      pushDebug(`Outbound call created: ${data.vapiCallId || "unknown id"}`);
+      pushDebug(`Outbound call created: ${data.vapiCallId || "unknown"}`);
     } catch (e) {
-      console.error("[UI] outbound start error:", e);
       setErrorMessage(e instanceof Error ? e.message : "Could not start outbound call.");
-      pushDebug(`Outbound start error: ${e instanceof Error ? e.message : "unknown"}`);
       setIsSaving(false);
       setPhase("idle");
       return;
@@ -260,7 +248,7 @@ export default function SimulateCall() {
         const resp = await fetch(apiUrl(`/api/vapi/call/${createdCallId}`));
         const data = await resp.json();
         if (!resp.ok) {
-          pushDebug(`Status poll error: ${data?.error || "unknown error"}`);
+          pushDebug(`Status poll error: ${data?.error || "unknown"}`);
           return;
         }
         setCallStatus(String(data?.status || "unknown"));
@@ -270,20 +258,16 @@ export default function SimulateCall() {
           nextTranscript = data.transcript.trim();
         } else if (Array.isArray(data?.messages) && data.messages.length > 0) {
           nextTranscript = data.messages
-            .map((m: { role?: string; type?: string; content?: unknown; message?: unknown }) => {
+            .map((m: any) => {
               const role = (m.role || m.type || "unknown").toString().toLowerCase();
               const c = m.content ?? m.message;
               let text = "";
               if (typeof c === "string") text = c.trim();
               else if (Array.isArray(c))
                 text = c
-                  .map((p: unknown) =>
-                    typeof p === "string" ? p : (p as { text?: string })?.text || "",
-                  )
+                  .map((p: any) => (typeof p === "string" ? p : p?.text || ""))
                   .join(" ")
                   .trim();
-              else if (c && typeof c === "object" && c !== null && "text" in (c as object))
-                text = String((c as { text?: string }).text || "").trim();
               if (!text) return "";
               return `${role}: ${text}`;
             })
@@ -310,7 +294,6 @@ export default function SimulateCall() {
             window.clearInterval(statusPollRef.current);
             statusPollRef.current = null;
           }
-          /* Keep pollTimerRef running until buildSummaryFromDb succeeds (sync + Gemini are async). */
         }
       } catch (err) {
         pushDebug(`Status poll failed: ${err instanceof Error ? err.message : "unknown"}`);
@@ -327,8 +310,6 @@ export default function SimulateCall() {
           window.clearInterval(pollTimerRef.current);
           pollTimerRef.current = null;
         }
-        pushDebug("Timeout waiting for DB row — check API: sync-call, Gemini key, Supabase calls table");
-        toast.error("Timed out waiting for AI summary. Check debug logs and server console.");
         setIsSaving(false);
         return;
       }
@@ -342,9 +323,6 @@ export default function SimulateCall() {
       setIsSaving(false);
       setPhase("completed");
       setRecentDbCallId(summaryFromDb.call_db_id);
-      pushDebug("Summary detected in DB, call flow completed");
-      window.dispatchEvent(new CustomEvent(LISTS_INVALIDATE));
-      toast.success("Clinical summary ready — check Call Logs and Alerts.");
       if (pollTimerRef.current) {
         window.clearInterval(pollTimerRef.current);
         pollTimerRef.current = null;
@@ -358,7 +336,6 @@ export default function SimulateCall() {
 
   async function handleHangUpOutbound() {
     if (!session || !vapiCallId) return;
-    pushDebug(`Hangup requested for call ${vapiCallId}`);
     try {
       const resp = await fetch(apiUrl(`/api/vapi/outbound-call/${vapiCallId}/hangup`), {
         method: "POST",
@@ -366,16 +343,13 @@ export default function SimulateCall() {
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        const msg = data?.error || "Hangup failed";
-        setErrorMessage(msg);
-        pushDebug(`Hangup failed: ${msg}`);
+        setErrorMessage(data?.error || "Hangup failed");
         return;
       }
-      pushDebug("Hangup succeeded");
       summaryDoneRef.current = false;
       pollCountRef.current = 0;
       const hangupT0 = Date.now();
-      await syncCallToDatabase(vapiCallId, {
+      void syncCallToDatabase(vapiCallId, {
         transcript: transcriptRef.current,
         durationSeconds: clientElapsedSeconds(),
       });
@@ -401,7 +375,7 @@ export default function SimulateCall() {
         setSummaryData(s);
         setRecentDbCallId(s.call_db_id);
         setPhase("completed");
-        window.dispatchEvent(new CustomEvent(LISTS_INVALIDATE));
+        window.dispatchEvent(new Event("vitals:invalidate-lists"));
         toast.success("Call analysis ready.");
         if (pollTimerRef.current) {
           window.clearInterval(pollTimerRef.current);
@@ -412,10 +386,8 @@ export default function SimulateCall() {
       setIsSaving(false);
       setPhase("idle");
       setShowPostCallPopup(false);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Hangup failed";
-      setErrorMessage(msg);
-      pushDebug(`Hangup exception: ${msg}`);
+    } catch (e: any) {
+      setErrorMessage(e?.message || "Hangup failed");
     }
   }
 
@@ -426,108 +398,154 @@ export default function SimulateCall() {
     };
   }, []);
 
-  return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 md:p-8 relative">
-      <div className="fixed inset-0 overflow-hidden -z-10 opacity-30 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
-      </div>
+  const handleWebCallFinished = (payload: { transcript: string; durationSeconds: number }) => {
+    toast.success("Browser check-in call completed. Syncing data...");
+    const mockVapiId = `browser-call-${Date.now()}`;
+    void syncCallToDatabase(mockVapiId, payload).then(async (dbId) => {
+      if (dbId) {
+        const summary = await buildSummaryFromDb({ vapiCallId: mockVapiId });
+        if (summary) {
+          setSummaryData(summary);
+          setRecentDbCallId(dbId);
+          setPhase("completed");
+        }
+      }
+    });
+  };
 
+  return (
+    <div className="min-h-[75vh] flex flex-col items-center justify-center p-4 relative">
       {phase === "idle" && (
-        <div className="max-w-3xl w-full bg-card/80 backdrop-blur-xl border-2 border-border p-8 md:p-10 rounded-[32px] shadow-soft space-y-8 animate-in fade-in zoom-in duration-300">
-          <div className="space-y-3 text-center">
-            <h1 className="text-4xl font-heading font-extrabold tracking-tight">AI Patient Chat</h1>
-            <p className="text-muted-foreground font-medium text-lg">
-              Select patient and phone number to place outbound PSTN call.
+        <div className="max-w-xl w-full bg-card border border-border/60 p-6 md:p-8 rounded-2xl shadow-card space-y-6 animate-fade-up">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-display font-extrabold tracking-tight">AI Patient Check-in</h1>
+            <p className="text-xs text-muted-foreground font-medium">
+              Start an interactive voice check-in using your web browser or trigger a phone outbound call.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 max-w-2xl mx-auto pt-2">
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <select
-                className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-border bg-background focus:border-primary outline-none font-bold transition-all appearance-none cursor-pointer"
-                value={selectedPatientId}
-                onChange={(e) => setSelectedPatientId(e.target.value)}
-              >
-                <option value="">Select Patient</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} {p.condition ? `— ${p.condition}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex gap-2">
+          <div className="space-y-4 max-w-md mx-auto pt-2">
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Select Patient</label>
+              <div className="relative">
                 <select
-                  className="w-[104px] px-3 py-4 rounded-2xl border-2 border-border bg-background focus:border-primary outline-none font-bold transition-all"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-full pl-4 pr-10 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:border-primary/50 cursor-pointer appearance-none"
+                  value={selectedPatientId}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
                 >
-                  <option value="+1">+1 (US)</option>
-                  <option value="+91">+91 (India)</option>
+                  <option value="">-- Choose Patient --</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.condition ? `(${p.condition})` : ""}
+                    </option>
+                  ))}
                 </select>
-                <input
-                  type="tel"
-                  className="flex-1 px-4 py-4 rounded-2xl border-2 border-border bg-background focus:border-primary outline-none font-bold transition-all"
-                  placeholder="Phone number"
-                  value={callerNumber}
-                  onChange={(e) => setCallerNumber(e.target.value)}
-                />
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
               </div>
             </div>
+
+            <div className="flex bg-secondary/40 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setSimType("browser")}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  simType === "browser" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
+                }`}
+              >
+                Browser Mic Call
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimType("phone")}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  simType === "phone" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
+                }`}
+              >
+                Outbound Phone Dial
+              </button>
+            </div>
+
+            {simType === "phone" && (
+              <div className="space-y-1.5 text-left animate-fade-in">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Destination Phone Number</label>
+                <div className="flex gap-2">
+                  <select
+                    className="w-24 px-2 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                  >
+                    <option value="+1">+1 (US)</option>
+                    <option value="+91">+91 (IN)</option>
+                  </select>
+                  <input
+                    type="tel"
+                    className="flex-1 px-4 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:border-primary/50 placeholder-muted-foreground"
+                    placeholder="Phone number"
+                    value={callerNumber}
+                    onChange={(e) => setCallerNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={handleStartOutboundCall}
-              disabled={!selectedPatient || !destinationNumberE164 || !session || isSaving}
-              className="w-full py-5 bg-tertiary text-foreground font-heading font-bold rounded-full border-4 border-foreground shadow-pop disabled:opacity-50"
-            >
-              Start Phone Call
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedPatientId("");
-                setCallerNumber("");
-                setSummaryData(null);
-              }}
-              disabled={isSaving}
-              className="w-full py-5 bg-white text-foreground font-heading font-black rounded-full border-4 border-foreground shadow-pop disabled:opacity-50"
-            >
-              Clear
-            </button>
+          <div className="pt-2 max-w-md mx-auto">
+            {simType === "browser" ? (
+              <VoiceAssistant
+                patient={selectedPatient}
+                callerPhoneNumber="+1234567890"
+                agentId={selectedPatient?.assigned_agent_id}
+                onCallFinished={handleWebCallFinished}
+              />
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleStartOutboundCall}
+                  disabled={!selectedPatient || !destinationNumberE164 || !session || isSaving}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 cursor-pointer"
+                >
+                  <PhoneCall className="w-4 h-4" /> Start Outbound Phone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPatientId("");
+                    setCallerNumber("");
+                    setSummaryData(null);
+                  }}
+                  disabled={isSaving}
+                  className="px-5 h-10 bg-secondary text-foreground hover:bg-border/60 border border-border/85 font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
 
           {isSaving && (
-            <p className="mt-3 text-xs text-muted-foreground text-center font-semibold">
-              Dialing patient via Vapi… waiting for transcript
+            <p className="text-xs text-muted-foreground text-center font-medium animate-pulse">
+              Dialing patient via Vapi Outbound...
             </p>
           )}
           {!isSaving && errorMessage && (
-            <p className="mt-3 text-xs text-destructive text-center font-semibold">
-              {errorMessage}
-            </p>
-          )}
-          {!isSaving && countryCode !== "+1" && (
-            <p className="mt-1 text-xs text-muted-foreground text-center font-semibold">
-              Free Vapi numbers usually dial US numbers only. Use +1 or upgrade your Vapi number plan.
-            </p>
+            <p className="text-xs text-destructive text-center font-semibold">{errorMessage}</p>
           )}
         </div>
       )}
 
       {showPostCallPopup && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-card border-2 border-border rounded-2xl p-6 shadow-soft space-y-4">
-            <h3 className="text-2xl font-heading font-extrabold">Call Ended</h3>
-            <p className="text-sm text-muted-foreground font-medium">
-              Open the call log or alerts for this patient — data loads from the database after sync (not static).
+          <div className="w-full max-w-md bg-card border border-border/60 rounded-2xl p-6 shadow-card space-y-4 text-center">
+            <h3 className="text-lg font-display font-bold text-foreground">Outbound Check completed</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              The phone session has concluded. If the AI summary generation is still compiling, you can view the alerts panel directly.
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-3 justify-center pt-2">
               {recentDbCallId && (
                 <button
                   type="button"
@@ -535,30 +553,25 @@ export default function SimulateCall() {
                     setShowPostCallPopup(false);
                     navigate(`/dashboard/calls/${recentDbCallId}`);
                   }}
-                  className="px-4 py-3 rounded-xl border-2 border-foreground bg-quaternary text-white font-bold"
+                  className="px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:scale-[1.02] cursor-pointer"
                 >
-                  Open call detail
+                  Open Call Record
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => {
                   setShowPostCallPopup(false);
-                  navigate("/dashboard/alerts", {
-                    state: {
-                      focusPatientId: selectedPatientId,
-                      focusCallId: recentDbCallId || recentCallId,
-                    },
-                  });
+                  navigate("/dashboard/alerts");
                 }}
-                className="px-4 py-3 rounded-xl border-2 border-foreground bg-secondary text-white font-bold"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold text-xs cursor-pointer"
               >
-                Open alerts
+                Open Alerts
               </button>
               <button
                 type="button"
                 onClick={() => setShowPostCallPopup(false)}
-                className="px-4 py-3 rounded-xl border-2 border-foreground bg-white font-bold"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold text-xs cursor-pointer"
               >
                 Close
               </button>
@@ -568,195 +581,151 @@ export default function SimulateCall() {
       )}
 
       {phase === "dialing" && (
-        <div className="flex flex-col items-center space-y-8 animate-in fade-in zoom-in duration-500 max-w-3xl w-full">
-          <div className="w-16 h-16 bg-tertiary mx-auto rounded-full flex items-center justify-center border-4 border-white shadow-pop">
-            <Phone className="w-8 h-8 text-foreground" />
+        <div className="flex flex-col items-center space-y-6 max-w-xl w-full bg-card border border-border/60 rounded-2xl p-6 shadow-card animate-fade-up">
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shrink-0">
+            <Phone className="w-6 h-6 text-primary animate-pulse" />
           </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-4xl font-heading font-black uppercase italic tracking-tighter">Dialing…</h2>
-            <p className="text-xs text-muted-foreground font-semibold">
-              Status: {callStatus}
-            </p>
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-display font-extrabold text-foreground">Placing Outbound...</h2>
+            <p className="text-xs text-muted-foreground font-medium">Status: {callStatus}</p>
           </div>
           <button
             type="button"
             onClick={handleHangUpOutbound}
             disabled={!vapiCallId}
-            className="px-6 py-3 bg-destructive text-white rounded-xl border-2 border-foreground shadow-pop disabled:opacity-50"
+            className="w-32 h-10 bg-destructive text-destructive-foreground rounded-xl font-bold hover:bg-destructive/90 transition-all text-xs cursor-pointer"
           >
             Hang Up
           </button>
-          <div className="w-full max-w-3xl bg-card border border-border rounded-xl p-4 text-left space-y-2">
-            <p className="text-xs font-black uppercase text-muted-foreground">Live Transcript</p>
-            <p className="text-sm whitespace-pre-wrap min-h-[56px]">
-              {liveTranscript || "Waiting for transcript..."}
+          <div className="w-full bg-secondary/30 border border-border/50 rounded-xl p-4 text-left space-y-1.5">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Live Transcription</p>
+            <p className="text-xs whitespace-pre-wrap min-h-[56px] text-foreground leading-relaxed">
+              {liveTranscript || "Awaiting connection..."}
             </p>
-          </div>
-          <div className="w-full max-w-3xl bg-card border border-border rounded-xl p-4 text-left space-y-2 max-h-48 overflow-auto">
-            <p className="text-xs font-black uppercase text-muted-foreground">Debug Logs</p>
-            {debugLogs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No logs yet.</p>
-            ) : (
-              debugLogs.map((line, idx) => (
-                <p key={`${line}-${idx}`} className="text-xs font-mono">
-                  {line}
-                </p>
-              ))
-            )}
           </div>
         </div>
       )}
 
       {phase === "completed" && summaryData && (
-        <div className="w-full max-w-4xl space-y-8 animate-in slide-in-from-bottom-12 duration-700">
-           <div className="bg-card border-4 border-border rounded-[40px] shadow-soft overflow-hidden">
-              <div className="bg-quaternary p-8 flex justify-between items-center text-white border-b-4 border-border">
-                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
-                       <Clipboard className="w-8 h-8" />
-                    </div>
-                    <div>
-                       <h2 className="text-3xl font-heading font-black uppercase tracking-tight text-white border-none bg-transparent m-0 leading-none">Clinical Assessment</h2>
-                       <p className="font-bold opacity-80 uppercase text-xs tracking-widest text-white border-none bg-transparent mt-2">
-                         {safeRender(summaryData.alert_type)}
-                       </p>
-                    </div>
-                 </div>
-                 <div className={`px-6 py-3 rounded-2xl border-2 border-white/50 backdrop-blur-md font-black italic text-xl uppercase ${summaryData.risk_level === 'high' ? 'bg-destructive ring-4 ring-destructive/30' : 'bg-primary'}`}>
-                    {safeRender(summaryData.risk_level)} Risk
-                 </div>
+        <div className="w-full max-w-3xl space-y-6 animate-fade-up">
+          <div className="bg-card border border-border/60 rounded-2xl shadow-card overflow-hidden">
+            <div className="bg-primary/5 p-6 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
+                  <Clipboard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-display font-extrabold text-foreground">AI Assessment Summary</h2>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase mt-0.5 tracking-wider">
+                    {summaryData.alert_type}
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`px-4 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider ${
+                  summaryData.risk_level === "high"
+                    ? "bg-destructive/10 border-destructive/25 text-destructive"
+                    : "bg-success/10 border-success/20 text-success"
+                }`}
+              >
+                {summaryData.risk_level} Risk
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5 text-left text-xs leading-relaxed">
+              <div className="p-4 rounded-xl border border-border/60 bg-secondary/25">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Executive Summary
+                </p>
+                <p className="text-sm font-semibold text-foreground leading-relaxed">{summaryData.summary}</p>
               </div>
 
-              <div className="p-10 space-y-10">
-                 <div className="space-y-4 text-left">
-                    <h4 className="flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest text-sm border-none bg-transparent">
-                       <Activity className="w-4 h-4 text-quaternary" /> Executive Summary
-                    </h4>
-                    <p className="text-2xl font-bold leading-relaxed">{safeRender(summaryData.summary)}</p>
-                 </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Triage Flag</p>
+                  <p className="text-xs font-bold text-foreground">{summaryData.alert_type || "N/A"}</p>
+                </div>
 
-                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="p-6 bg-muted/40 rounded-3xl border-2 border-border space-y-4 text-left">
-                       <h4 className="flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest text-sm border-none bg-transparent">
-                          <AlertTriangle className="w-4 h-4 text-secondary" /> Triage / alert title
-                       </h4>
-                       <div className="p-4 bg-white border-2 border-border rounded-2xl font-black text-lg text-secondary shadow-pop uppercase italic">
-                          {safeRender(summaryData.alert_type)}
-                       </div>
-                    </div>
-                    
-                    <div className="p-6 bg-muted/40 rounded-3xl border-2 border-border space-y-4 text-left">
-                       <h4 className="flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest text-sm border-none bg-transparent">
-                          <Clipboard className="w-4 h-4 text-primary" /> Symptoms (from call + chart)
-                       </h4>
-                       <div className="flex flex-wrap gap-2">
-                          {summaryData.symptoms?.length ? (
-                            summaryData.symptoms.map((s: any, i: number) => (
-                             <span key={i} className="px-3 py-1 bg-white border-2 border-border rounded-full font-bold text-sm">
-                                 {safeRender(s)}
-                             </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-muted-foreground font-medium">No symptom list returned — see summary above.</span>
-                          )}
-                       </div>
-                    </div>
-                 </div>
-
-                 {(summaryData.diagnosis || summaryData.relevant_history) && (
-                   <div className="grid md:grid-cols-2 gap-6 text-left">
-                     <div className="p-6 rounded-3xl border-2 border-border bg-background space-y-2">
-                       <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Working impression / diagnosis</h4>
-                       <p className="text-lg font-bold leading-snug">{safeRender(summaryData.diagnosis)}</p>
-                     </div>
-                     <div className="p-6 rounded-3xl border-2 border-border bg-background space-y-2">
-                       <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Relevant history</h4>
-                       <p className="text-sm font-medium leading-relaxed text-foreground">{safeRender(summaryData.relevant_history)}</p>
-                     </div>
-                   </div>
-                 )}
-
-                 {summaryData.clinical_reasoning ? (
-                   <div className="p-6 rounded-3xl border-2 border-dashed border-border bg-muted/30 text-left space-y-2">
-                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Clinical reasoning</h4>
-                     <p className="text-sm font-medium leading-relaxed">{safeRender(summaryData.clinical_reasoning)}</p>
-                   </div>
-                 ) : null}
-
-                 {summaryData.differential_diagnosis?.length ? (
-                   <div className="text-left space-y-2">
-                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Differential diagnoses</h4>
-                     <div className="flex flex-wrap gap-2">
-                       {summaryData.differential_diagnosis.map((d: any, i: number) => (
-                         <span key={i} className="px-3 py-1 rounded-full border-2 border-border bg-card text-sm font-bold">
-                           {safeRender(d)}
-                         </span>
-                       ))}
-                     </div>
-                   </div>
-                 ) : null}
-
-                 {summaryData.follow_up_plan ? (
-                   <div className="p-6 rounded-3xl border-2 border-border bg-muted/20 text-left">
-                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Follow-up plan</h4>
-                     <p className="text-sm font-medium">{safeRender(summaryData.follow_up_plan)}</p>
-                   </div>
-                 ) : null}
-
-                 <div className="p-8 bg-muted/80 rounded-3xl border-2 border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Object.keys(summaryData.vitals_data || {}).length === 0 ? (
-                       <p className="col-span-full text-center text-sm text-muted-foreground font-medium py-4">
-                         No extra vitals key/value pairs from the model for this call.
-                       </p>
+                <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Symptom Tags</p>
+                  <div className="flex flex-wrap gap-1">
+                    {summaryData.symptoms?.length ? (
+                      summaryData.symptoms.map((s: any, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-background border border-border rounded text-[10px] font-medium"
+                        >
+                          {s}
+                        </span>
+                      ))
                     ) : (
-                    Object.entries(summaryData.vitals_data).map(([key, val]: any) => (
-                       <div key={key} className="text-center p-3 bg-white rounded-2xl border-2 border-border shadow-soft">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-tighter">{key.replace('_',' ')}</p>
-                          <p className="text-lg font-black text-foreground">{safeRender(val)}</p>
-                       </div>
-                    ))
+                      <span className="text-muted-foreground">No tags</span>
                     )}
-                 </div>
-
-                 <div className="p-8 bg-secondary/5 rounded-3xl border-4 border-dashed border-secondary/30 flex items-center justify-between text-left">
-                    <div>
-                       <h4 className="text-secondary font-black uppercase tracking-widest text-sm mb-1 border-none bg-transparent">Recommended Action</h4>
-                       <p className="text-xl font-bold">{safeRender(summaryData.action_required)}</p>
-                    </div>
-                    <Shield className="w-12 h-12 text-secondary opacity-20" />
-                 </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-8 bg-muted border-t-4 border-border flex flex-wrap gap-4">
-                 {summaryData?.call_db_id && (
-                   <button
-                     type="button"
-                     onClick={() => navigate(`/dashboard/calls/${summaryData.call_db_id}`)}
-                     className="px-8 py-5 bg-quaternary text-white font-heading font-black uppercase rounded-2xl border-4 border-foreground shadow-pop hover:-translate-y-1 transition-all"
-                   >
-                     Full call log
-                   </button>
-                 )}
-                 <button 
-                 type="button"
-                 onClick={() => {
-                   setPhase("idle");
-                   setSummaryData(null);
-                   setVapiCallId(null);
-                 }} 
-                  className="flex-1 min-w-[140px] py-5 bg-white text-foreground font-heading font-black uppercase rounded-2xl border-4 border-foreground shadow-pop hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                 >
-                    New Call
-                 </button>
-                 <button 
-                 type="button"
-                 onClick={() => setPhase("idle")} 
-                 className="px-10 py-5 bg-tertiary text-foreground font-heading font-black uppercase rounded-2xl border-4 border-foreground shadow-pop hover:-translate-y-1 transition-all"
-                 >
-                    Back to Setup
-                 </button>
+              {(summaryData.diagnosis || summaryData.relevant_history) && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Working Diagnosis
+                    </p>
+                    <p className="text-xs text-foreground font-bold">{summaryData.diagnosis}</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prior History</p>
+                    <p className="text-xs text-foreground font-medium">{summaryData.relevant_history}</p>
+                  </div>
+                </div>
+              )}
+
+              {summaryData.clinical_reasoning && (
+                <div className="p-4 rounded-xl border border-dashed border-border bg-secondary/10">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Clinical Reasoning
+                  </p>
+                  <p className="text-xs text-foreground font-medium leading-relaxed">{summaryData.clinical_reasoning}</p>
+                </div>
+              )}
+
+              {summaryData.follow_up_plan && (
+                <div className="p-4 rounded-xl border border-primary/15 bg-primary/5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Follow-up Plan</p>
+                  <p className="text-xs text-foreground leading-relaxed">{summaryData.follow_up_plan}</p>
+                </div>
+              )}
+
+              <div className="p-4 bg-destructive/5 border border-destructive/15 rounded-xl">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1">
+                  Immediate Recommendation
+                </p>
+                <p className="text-xs font-bold text-foreground leading-relaxed">{summaryData.action_required}</p>
               </div>
-           </div>
+            </div>
+
+            <div className="p-6 bg-secondary/20 border-t border-border/50 flex flex-wrap gap-3">
+              {summaryData?.call_db_id && (
+                <Link
+                  to={`/dashboard/calls/${summaryData.call_db_id}`}
+                  className="inline-flex items-center gap-1.5 h-10 px-5 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow text-xs cursor-pointer"
+                >
+                  View Details <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPhase("idle");
+                  setSummaryData(null);
+                  setVapiCallId(null);
+                }}
+                className="px-4 h-10 bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Place Another Check-in
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

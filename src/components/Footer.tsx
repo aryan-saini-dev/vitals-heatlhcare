@@ -1,28 +1,39 @@
-import { Heart } from "lucide-react";
+import vitalsLogo from "@/assets/Vitals-logo.png";
 
-const Footer = () => {
+function Logo() {
   return (
-    <footer className="border-t-2 border-foreground py-10 px-4">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 font-heading font-bold text-lg">
-          <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-foreground">
-            <Heart className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
-          </span>
-          VITALS
+    <a href="#top" className="flex items-center gap-3 group">
+      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20 transition-all group-hover:bg-primary/15 group-hover:scale-105">
+        <img
+          src={vitalsLogo}
+          alt="VITALS logo"
+          className="h-full w-full object-contain p-0.5"
+        />
+      </div>
+      <div className="leading-tight">
+        <div className="font-display text-xl font-extrabold tracking-tight text-foreground">VITALS</div>
+        <div className="text-[11px] font-medium tracking-wide text-muted-foreground">AI Healthcare</div>
+      </div>
+    </a>
+  );
+}
+
+export default function Footer() {
+  return (
+    <footer className="border-t border-border bg-background">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 md:flex-row">
+        <Logo />
+        <div className="text-center text-xs text-muted-foreground">
+          Agentic AI Healthcare · Team V.I.T.A.L.S · All rights reserved.
         </div>
-        <p className="text-muted-foreground text-sm text-center">
-          Agentic AI Healthcare • Team V.I.T.A.L.S • All rights reserved.
-        </p>
-        <div className="flex gap-3">
-          {["Privacy", "Terms", "Contact"].map((link) => (
-            <a key={link} href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              {link}
-            </a>
-          ))}
+        <div className="flex items-center gap-5 text-xs font-medium text-muted-foreground">
+          <a href="#" className="transition-colors hover:text-primary">Privacy</a>
+          <span className="text-border">|</span>
+          <a href="#" className="transition-colors hover:text-primary">Terms</a>
+          <span className="text-border">|</span>
+          <a href="#" className="transition-colors hover:text-primary">Contact</a>
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}
