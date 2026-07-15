@@ -16,6 +16,7 @@ import {
   Loader2,
   PhoneCall,
   Mic,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -472,7 +473,7 @@ export default function SimulateCall() {
                   simType === "browser" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
                 }`}
               >
-                Browser Mic Call
+                Web Voice Agent
               </button>
               <button
                 type="button"
@@ -511,12 +512,19 @@ export default function SimulateCall() {
 
           <div className="pt-2 max-w-md mx-auto">
             {simType === "browser" ? (
-              <VoiceAssistant
-                patient={selectedPatient}
-                callerPhoneNumber="+1234567890"
-                agentId={selectedPatient?.assigned_agent_id}
-                onCallFinished={handleWebCallFinished}
-              />
+              <div className="space-y-4 animate-fade-in text-center">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 text-xs text-[color:var(--warning)] font-medium leading-relaxed">
+                  <span className="font-bold text-[color:var(--warning)]">Note:</span> Since Twilio trial accounts do not support calling Indian phone numbers, you can test the AI agent directly using the hosted preview link.
+                </div>
+                <a
+                  href="https://vapi.ai?demo=true&shareKey=ae8a872f-9bd6-43b3-bd91-5a4f9ce900fd&assistantId=36c1a453-9532-419c-93f3-1cdb4bf80413"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 h-11 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02]"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open Hosted Voice Agent <Sparkles className="w-3.5 h-3.5" />
+                </a>
+              </div>
             ) : (
               <div className="flex gap-3">
                 <button
