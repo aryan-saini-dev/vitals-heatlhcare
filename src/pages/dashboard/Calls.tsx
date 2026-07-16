@@ -111,69 +111,81 @@ export default function Calls() {
     const isApproved = d.toLowerCase() === "approved";
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
           isApproved
             ? "bg-success/10 text-success border-success/15"
             : "bg-destructive/10 text-destructive border-destructive/15"
         }`}
       >
-        {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+        {isApproved ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
         {d.charAt(0).toUpperCase() + d.slice(1)}
       </span>
     );
   };
 
   return (
-    <div className="space-y-8 animate-fade-up">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border/40 pb-5">
-        <div>
-          <h1 className="text-3xl font-display font-extrabold text-foreground tracking-tight">Call Logs</h1>
-          <p className="mt-1 text-sm text-muted-foreground font-medium">
+    <div className="space-y-4 animate-fade-up">
+
+      {/* ── Header Banner — Uses primary indigo gradient ── */}
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-primary shadow-glow">
+        <div className="absolute inset-0 grid-pattern opacity-15" />
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-2 text-[9px] font-bold uppercase tracking-widest text-primary-foreground ring-1 ring-white/25 bg-white/10">
+            <Phone className="w-3.5 h-3.5" /> Care Logs
+          </div>
+          <h1 className="text-xl md:text-2xl font-display font-extrabold text-primary-foreground tracking-tight">Call History</h1>
+          <p className="text-xs mt-1 text-primary-foreground/75 leading-relaxed max-w-lg">
             Review detailed medical summaries, transcripts, and prescriptions generated from active conversations.
           </p>
         </div>
+
         <button
           type="button"
           onClick={() => void loadCalls()}
-          className="self-start shrink-0 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-secondary transition-all cursor-pointer"
+          className="relative z-10 self-start sm:self-center inline-flex items-center gap-1.5 px-4.5 py-2.5 font-semibold rounded-full text-xs transition-all hover:scale-105 cursor-pointer bg-background text-primary shadow-soft border-none"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Refresh List
         </button>
       </div>
 
-      {/* Container */}
-      <div className="bg-card border border-border/60 rounded-2xl shadow-card overflow-hidden">
+      {/* ── Call Logs Table Card ── */}
+      <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-card">
         {/* Search */}
-        <div className="p-4 border-b border-border/50 bg-secondary/20">
-          <div className="relative max-w-md">
+        <div className="px-4.5 py-3 flex items-center gap-3 border-b border-border/70 bg-secondary/30">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search by patient or agent name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-9 pr-4 bg-background border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+              className="w-full h-9 pl-9 pr-4 bg-background border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-primary/50 transition-all"
             />
           </div>
+          <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-primary/10 text-primary">
+            {filteredCalls.length} sessions
+          </span>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground font-medium text-sm animate-pulse">
-            Loading call records...
+          <div className="p-16 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-muted border-t-primary rounded-full animate-spin" />
+            <p className="text-xs text-muted-foreground font-medium">Loading call records…</p>
           </div>
         ) : filteredCalls.length === 0 ? (
           <div className="p-16 text-center flex flex-col items-center max-w-md mx-auto">
-            <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center border border-border/60 mb-4 text-muted-foreground">
+            <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center border border-border mb-4 text-muted-foreground">
               <Phone className="w-6 h-6 opacity-60" />
             </div>
-            <h3 className="text-base font-display font-bold text-foreground mb-1.5">No Calls Recorded</h3>
+            <h3 className="text-sm font-display font-bold text-foreground mb-1">No Calls Recorded</h3>
             <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
               No continuous care checks have occurred. You can simulate a live patient voice session.
             </p>
             <Link
               to="/dashboard/calls/simulate"
-              className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-background/50 px-4 py-2 text-xs font-semibold text-primary backdrop-blur transition-all hover:bg-primary hover:text-primary-foreground"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2.5 text-xs font-bold text-white shadow-glow hover:scale-105"
             >
               Simulate First Call
             </Link>
@@ -185,45 +197,40 @@ export default function Calls() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border bg-secondary/15">
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Date / Time</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Patient</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground hidden lg:table-cell">Agent</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground text-center">Duration</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground text-center">Decision</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground text-center">PDF</th>
-                    <th className="p-4 font-display font-bold uppercase tracking-wider text-[10px] text-muted-foreground text-right w-24">Actions</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground">Date / Time</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground">Patient</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground hidden lg:table-cell">Agent</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground text-center">Duration</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground text-center">Decision</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground text-center">PDF</th>
+                    <th className="p-3.5 font-display font-bold uppercase tracking-wider text-[9px] text-muted-foreground text-right w-24">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/60">
                   {filteredCalls.map((call) => (
-                    <tr key={call.id} className="hover:bg-secondary/20 transition-colors group">
-                      <td className="p-4">
-                        <div className="font-bold text-foreground text-sm">
+                    <tr key={call.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="p-3.5">
+                        <div className="font-bold text-foreground text-xs">
                           {new Date(call.created_at).toLocaleDateString()}
                         </div>
-                        <div className="text-[10px] text-muted-foreground font-semibold uppercase mt-0.5">
+                        <div className="text-[9px] text-muted-foreground font-semibold uppercase mt-0.5">
                           {new Date(call.created_at).toLocaleTimeString()}
                         </div>
-                        {call.transcript && (
-                          <div className="text-[10px] text-muted-foreground mt-1 font-medium">
-                            Transcript available ({call.transcript.length} chars)
-                          </div>
-                        )}
                       </td>
-                      <td className="p-4 font-bold text-foreground text-sm">{call.patient_name}</td>
-                      <td className="p-4 hidden lg:table-cell">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-info/10 text-info border border-info/15">
-                          <Bot className="w-3.5 h-3.5" /> {call.agent_name || "Care Agent"}
+                      <td className="p-3.5 font-bold text-foreground text-xs">{call.patient_name}</td>
+                      <td className="p-3.5 hidden lg:table-cell">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-info/10 text-info border border-info/15">
+                          <Bot className="w-3 h-3" /> {(call.agent_name || "Care Agent").substring(0, 24)}
                         </span>
                       </td>
-                      <td className="p-4 text-center">
-                        <span className="inline-flex px-2 py-0.5 text-xs font-semibold text-muted-foreground bg-secondary rounded-lg">
+                      <td className="p-3.5 text-center">
+                        <span className="inline-flex px-2 py-0.5 text-[10px] font-bold text-muted-foreground bg-secondary rounded-lg">
                           {call.duration_seconds
                             ? `${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s`
                             : call.duration || "N/A"}
                         </span>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3.5 text-center">
                         {call.vitals_data?.DoctorDecision ? (
                           decisionBadge(call.vitals_data.DoctorDecision)
                         ) : (
@@ -231,34 +238,34 @@ export default function Calls() {
                             <button
                               type="button"
                               onClick={() => void setDecision(call, "approved")}
-                              className="px-2 py-1 text-xs font-bold border border-success/30 rounded-lg bg-success/10 text-success hover:bg-success hover:text-success-foreground transition-all cursor-pointer"
+                              className="px-2 py-1 text-[10px] font-black border border-success/30 rounded-lg bg-success/10 text-success hover:bg-success hover:text-white transition-all cursor-pointer"
                             >
                               ✓
                             </button>
                             <button
                               type="button"
                               onClick={() => void setDecision(call, "denied")}
-                              className="px-2 py-1 text-xs font-bold border border-destructive/30 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all cursor-pointer"
+                              className="px-2 py-1 text-[10px] font-black border border-destructive/30 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-all cursor-pointer"
                             >
                               ✕
                             </button>
                           </div>
                         )}
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3.5 text-center">
                         <button
                           type="button"
                           disabled={!call.vitals_data?.ReportData}
                           onClick={() => void downloadReport(call.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold border border-border/80 rounded-lg bg-secondary disabled:opacity-40 hover:bg-border/60 transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold border border-border rounded-lg bg-secondary disabled:opacity-40 hover:bg-border/60 transition-all cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5 text-muted-foreground" /> PDF
+                          <FileText className="w-3 h-3 text-muted-foreground" /> PDF
                         </button>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-3.5 text-right">
                         <Link
                           to={`/dashboard/calls/${call.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground rounded-lg font-bold text-xs border border-border/80 hover:border-transparent transition-all whitespace-nowrap cursor-pointer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-primary text-white font-bold rounded-lg text-[10px] transition-all hover:scale-105 whitespace-nowrap cursor-pointer shadow-soft"
                         >
                           Details <ChevronRight className="w-3.5 h-3.5" />
                         </Link>
@@ -272,17 +279,17 @@ export default function Calls() {
             {/* Mobile View */}
             <div className="md:hidden divide-y divide-border">
               {filteredCalls.map((call) => (
-                <div key={call.id} className="p-4 space-y-3">
+                <div key={call.id} className="p-3.5 space-y-2.5">
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-bold text-foreground text-sm">
+                      <div className="font-bold text-foreground text-xs">
                         {new Date(call.created_at).toLocaleDateString()}
                       </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="text-[9px] text-muted-foreground mt-0.5">
                         {new Date(call.created_at).toLocaleTimeString()}
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 text-xs font-semibold bg-secondary rounded-lg text-muted-foreground">
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-secondary rounded-lg text-muted-foreground">
                       {call.duration_seconds
                         ? `${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s`
                         : call.duration || "N/A"}
@@ -328,15 +335,15 @@ export default function Calls() {
                         type="button"
                         disabled={!call.vitals_data?.ReportData}
                         onClick={() => void downloadReport(call.id)}
-                        className="p-1.5 border border-border/80 rounded-lg bg-secondary disabled:opacity-40 cursor-pointer"
+                        className="p-1.5 border border-border rounded-lg bg-secondary disabled:opacity-40 cursor-pointer"
                       >
-                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
                       <Link
                         to={`/dashboard/calls/${call.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary text-foreground rounded-lg font-bold text-xs border border-border/80 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-primary text-white rounded-lg font-bold text-xs cursor-pointer shadow-soft"
                       >
-                        View <ChevronRight className="w-3 h-3" />
+                        View <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>
                   </div>

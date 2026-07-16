@@ -121,6 +121,54 @@ export default function WorkflowSection() {
           ))}
         </ol>
 
+        {/* n8n Automation Section */}
+        <div className="mt-20 space-y-12">
+          <div className="text-center mx-auto max-w-2xl">
+            <Pill icon={Activity} color="info">Automation Engine</Pill>
+            <h3 className="mt-4 font-display text-3xl font-bold text-foreground tracking-tight">n8n Live Pipeline &amp; Blueprint</h3>
+            <p className="text-base text-muted-foreground mt-2">Our autonomous patient checks, doctor routing tables, and notification pipelines orchestrate patient health data seamlessly.</p>
+          </div>
+
+          {/* Blueprint Diagram */}
+          <div className="relative rounded-3xl overflow-hidden border border-border/60 bg-card/40 shadow-glow backdrop-blur p-2 md:p-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-info/5 pointer-events-none" />
+            <div className="mb-4 flex items-center justify-between px-2">
+              <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" /> Technical Node Blueprint
+              </div>
+              <span className="text-xs font-medium text-muted-foreground bg-background/50 px-2.5 py-1 rounded-full border border-border/50">Diagram</span>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden bg-background border border-border/50 shadow-inner">
+              <img
+                src="/N8N-workflow.png"
+                alt="n8n Workflow Diagram"
+                className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-700 ease-out cursor-zoom-in"
+                onClick={() => window.open("/N8N-workflow.png", "_blank")}
+              />
+            </div>
+          </div>
+
+          {/* Live Demonstration */}
+          <div className="relative rounded-3xl overflow-hidden border border-border/60 bg-card/40 shadow-glow backdrop-blur p-2 md:p-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-success/5 pointer-events-none" />
+            <div className="mb-4 flex items-center justify-between px-2">
+              <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" /> Live Demonstration
+              </div>
+              <span className="text-xs font-medium text-muted-foreground bg-background/50 px-2.5 py-1 rounded-full border border-border/50">Video</span>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden bg-black shadow-inner">
+              <video
+                src="/Vitals-n8n.mp4"
+                controls
+                className="w-full h-auto object-cover"
+                muted
+                playsInline
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="mt-12 grid gap-4 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Shield, color: "primary", title: "Secure by Design", desc: "HIPAA compliant & enterprise-grade security" },

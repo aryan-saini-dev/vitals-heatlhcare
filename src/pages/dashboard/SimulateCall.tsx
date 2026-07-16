@@ -3,12 +3,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/api";
-import { VoiceAssistant } from "@/components/VoiceAssistant";
 import {
   Clipboard,
   Phone,
   PhoneCall,
   ArrowRight,
+  Sparkles,
+  Bot,
+  CheckCircle2,
+  Volume2,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +36,9 @@ export default function SimulateCall() {
   const [showPostCallPopup, setShowPostCallPopup] = useState(false);
   const [recentCallId, setRecentCallId] = useState<string | null>(null);
   const [recentDbCallId, setRecentDbCallId] = useState<string | null>(null);
-  const [simType, setSimType] = useState<"phone" | "browser">("browser");
+
+  // Tab selection state: "web" (interactive web demo) or "telephony" (outbound direct dial)
+  const [activeTab, setActiveTab] = useState<"web" | "telephony">("web");
 
   const pollTimerRef = useRef<number | null>(null);
   const statusPollRef = useRef<number | null>(null);
@@ -64,6 +70,9 @@ export default function SimulateCall() {
       if (error) return;
       if (data) {
         setPatients(data);
+        if (data.length > 0) {
+          setSelectedPatientId(data[0].id);
+        }
       }
     }
     void fetchPatients();
@@ -398,231 +407,253 @@ export default function SimulateCall() {
     };
   }, []);
 
-  const handleWebCallFinished = (payload: { transcript: string; durationSeconds: number }) => {
-    toast.success("Browser check-in call completed. Syncing data...");
-    const mockVapiId = `browser-call-${Date.now()}`;
-    void syncCallToDatabase(mockVapiId, payload).then(async (dbId) => {
-      if (dbId) {
-        const summary = await buildSummaryFromDb({ vapiCallId: mockVapiId });
-        if (summary) {
-          setSummaryData(summary);
-          setRecentDbCallId(dbId);
-          setPhase("completed");
-        }
-      }
-    });
-  };
-
   return (
-    <div className="min-h-[75vh] flex flex-col items-center justify-center p-4 relative">
+    <div className="flex flex-col items-center justify-center p-2 relative max-w-4xl mx-auto">
       {phase === "idle" && (
-        <div className="max-w-xl w-full bg-card border border-border/60 p-6 md:p-8 rounded-2xl shadow-card space-y-6 animate-fade-up">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-display font-extrabold tracking-tight">AI Patient Check-in</h1>
-            <p className="text-xs text-muted-foreground font-medium">
-              Start an interactive voice check-in using your web browser or trigger a phone outbound call.
-            </p>
+        <div className="w-full space-y-4 animate-fade-up">
+
+          {/* Segmented Tab Controller */}
+          <div className="flex justify-center">
+            <div className="inline-flex rounded-full bg-secondary/50 p-1 border border-border max-w-md w-full">
+              <button
+                type="button"
+                onClick={() => setActiveTab("web")}
+                className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
+                  activeTab === "web"
+                    ? "bg-primary text-white shadow-soft"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Web Browser Agent
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("telephony")}
+                className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${
+                  activeTab === "telephony"
+                    ? "bg-primary text-white shadow-soft"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Outbound Phone Call
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-4 max-w-md mx-auto pt-2">
-            <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Select Patient</label>
-              <div className="relative">
-                <select
-                  className="w-full pl-4 pr-10 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:border-primary/50 cursor-pointer appearance-none"
-                  value={selectedPatientId}
-                  onChange={(e) => setSelectedPatientId(e.target.value)}
-                >
-                  <option value="">-- Choose Patient --</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.condition ? `(${p.condition})` : ""}
-                    </option>
+          {/* ── Tab Content: Web Agent ── */}
+          {activeTab === "web" && (
+            <div className="bg-card border border-border p-5 rounded-2xl shadow-card relative overflow-hidden flex flex-col justify-between max-w-xl mx-auto w-full">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                    <Bot className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-display font-extrabold text-foreground">AI Clinical Voice Agent</h2>
+                    <p className="text-[9px] font-bold text-primary uppercase tracking-wider">Interactive Web Demo</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Test custom RAG-grounded clinician check-ins directly inside your browser. No phone line required.
+                </p>
+
+                {/* Animated waves container */}
+                <div className="h-12 bg-secondary/30 rounded-xl flex items-center justify-center gap-1 border border-border/40 px-6">
+                  {[6, 16, 24, 12, 32, 20, 8, 18, 10, 28, 14, 8].map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-1 rounded-full bg-primary/45"
+                      style={{
+                        height: `${h}px`,
+                        animation: `float 1.${i % 5}s ease-in-out infinite alternate`,
+                      }}
+                    />
                   ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    "Supports real-time multilingual symptoms intake.",
+                    "Auto-triages clinical risk into the doctor's database.",
+                  ].map((text, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-foreground font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>{text}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            <div className="flex bg-secondary/40 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setSimType("browser")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  simType === "browser" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
-                }`}
-              >
-                Browser Mic Call
-              </button>
-              <button
-                type="button"
-                onClick={() => setSimType("phone")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  simType === "phone" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
-                }`}
-              >
-                Outbound Phone Dial
-              </button>
+              <div className="pt-6 space-y-3">
+                <a
+                  href="https://vapi.ai?demo=true&shareKey=ae8a872f-9bd6-43b3-bd91-5a4f9ce900fd&assistantId=36c1a453-9532-419c-93f3-1cdb4bf80413"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full h-11 bg-gradient-primary text-white font-bold rounded-xl shadow-glow transition-all hover:scale-105 cursor-pointer text-xs"
+                >
+                  <Volume2 className="w-4 h-4" /> Launch Browser Demo Call <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+                <p className="text-[9px] text-muted-foreground text-center">
+                  Clinician Portal prompt: act as patient <strong>Anita</strong> to test clinical diagnostic flags.
+                </p>
+              </div>
             </div>
+          )}
 
-            {simType === "phone" && (
-              <div className="space-y-1.5 text-left animate-fade-in">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Destination Phone Number</label>
-                <div className="flex gap-2">
-                  <select
-                    className="w-24 px-2 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none"
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                  >
-                    <option value="+1">+1 (US)</option>
-                    <option value="+91">+91 (IN)</option>
-                  </select>
-                  <input
-                    type="tel"
-                    className="flex-1 px-4 h-10 rounded-xl border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:border-primary/50 placeholder-muted-foreground"
-                    placeholder="Phone number"
-                    value={callerNumber}
-                    onChange={(e) => setCallerNumber(e.target.value)}
-                  />
+          {/* ── Tab Content: Telephony Outbound ── */}
+          {activeTab === "telephony" && (
+            <div className="bg-card border border-border p-5 rounded-2xl shadow-card relative overflow-hidden max-w-xl mx-auto w-full">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                    <PhoneCall className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-display font-extrabold text-foreground">Outbound Direct Dial</h2>
+                    <p className="text-[9px] font-bold text-primary uppercase tracking-wider">Telephony Test</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Call any registered patient's physical phone number. The agent automatically reviews historical symptoms to dial.
+                </p>
+
+                <div className="space-y-3">
+                  {/* Interactive Patient Dropdown context */}
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Select Patient Context</label>
+                    <select
+                      className="w-full h-10 px-3 rounded-xl border border-border bg-background text-xs font-semibold focus:outline-none focus:border-primary/50"
+                      value={selectedPatientId}
+                      onChange={(e) => setSelectedPatientId(e.target.value)}
+                    >
+                      {patients.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {p.condition ? `(${p.condition})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Phone input */}
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Phone Number</label>
+                    <div className="flex gap-2">
+                      <select
+                        className="w-24 px-2 h-10 rounded-xl border border-border bg-background text-xs font-semibold focus:outline-none"
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                      >
+                        <option value="+1">+1 (US)</option>
+                        <option value="+91">+91 (IN)</option>
+                      </select>
+                      <input
+                        type="tel"
+                        className="flex-1 px-3 h-10 rounded-xl border border-border bg-background text-xs font-semibold focus:outline-none focus:border-primary/50 placeholder-muted-foreground"
+                        placeholder="e.g. 5550199"
+                        value={callerNumber}
+                        onChange={(e) => setCallerNumber(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Compact Sandbox scope description */}
+                <div className="p-3 bg-warning/5 border border-warning/15 rounded-xl text-left flex gap-2">
+                  <div className="w-4 h-4 bg-warning/10 text-warning rounded flex items-center justify-center shrink-0 font-bold text-[10px]">
+                    !
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[9px] font-bold uppercase text-warning tracking-wider">Twilio Calling Scope</p>
+                    <p className="text-[9px] text-muted-foreground leading-normal font-medium">
+                      Dialing only works for numbers registered manually in Twilio. Non-US numbers (+91 etc.) are restricted on free accounts.
+                    </p>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="pt-2 max-w-md mx-auto">
-            {simType === "browser" ? (
-              <VoiceAssistant
-                patient={selectedPatient}
-                callerPhoneNumber="+1234567890"
-                agentId={selectedPatient?.assigned_agent_id}
-                onCallFinished={handleWebCallFinished}
-              />
-            ) : (
-              <div className="flex gap-3">
+              <div className="flex gap-2.5 pt-6">
                 <button
                   type="button"
                   onClick={handleStartOutboundCall}
                   disabled={!selectedPatient || !destinationNumberE164 || !session || isSaving}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 cursor-pointer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 bg-gradient-primary text-white font-bold rounded-xl shadow-glow transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer text-xs"
                 >
-                  <PhoneCall className="w-4 h-4" /> Start Outbound Phone
+                  <Phone className="w-4 h-4" /> Start Outbound Phone
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedPatientId("");
-                    setCallerNumber("");
-                    setSummaryData(null);
-                  }}
+                  onClick={() => { setCallerNumber(""); setSummaryData(null); }}
                   disabled={isSaving}
-                  className="px-5 h-10 bg-secondary text-foreground hover:bg-border/60 border border-border/85 font-bold rounded-xl transition-all cursor-pointer"
+                  className="px-4 h-11 bg-secondary text-foreground hover:bg-border/60 border border-border font-semibold rounded-xl text-xs transition-all"
                 >
                   Clear
                 </button>
               </div>
-            )}
-          </div>
-
-          {isSaving && (
-            <p className="text-xs text-muted-foreground text-center font-medium animate-pulse">
-              Dialing patient via Vapi Outbound...
-            </p>
-          )}
-          {!isSaving && errorMessage && (
-            <p className="text-xs text-destructive text-center font-semibold">{errorMessage}</p>
+            </div>
           )}
         </div>
       )}
 
-      {showPostCallPopup && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-card border border-border/60 rounded-2xl p-6 shadow-card space-y-4 text-center">
-            <h3 className="text-lg font-display font-bold text-foreground">Outbound Check completed</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              The phone session has concluded. If the AI summary generation is still compiling, you can view the alerts panel directly.
-            </p>
-            <div className="flex gap-3 justify-center pt-2">
-              {recentDbCallId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPostCallPopup(false);
-                    navigate(`/dashboard/calls/${recentDbCallId}`);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:scale-[1.02] cursor-pointer"
-                >
-                  Open Call Record
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPostCallPopup(false);
-                  navigate("/dashboard/alerts");
-                }}
-                className="px-4 py-2 rounded-xl bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold text-xs cursor-pointer"
-              >
-                Open Alerts
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPostCallPopup(false)}
-                className="px-4 py-2 rounded-xl bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold text-xs cursor-pointer"
-              >
-                Close
-              </button>
+      {/* ── Dialing Phase ── */}
+      {phase === "dialing" && (
+        <div className="max-w-xl w-full mx-auto bg-card border border-border rounded-2xl p-5 shadow-card flex flex-col items-center space-y-4 animate-fade-up relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-75"></div>
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shrink-0 relative z-10">
+              <Phone className="w-6 h-6 text-primary animate-pulse" />
             </div>
           </div>
-        </div>
-      )}
 
-      {phase === "dialing" && (
-        <div className="flex flex-col items-center space-y-6 max-w-xl w-full bg-card border border-border/60 rounded-2xl p-6 shadow-card animate-fade-up">
-          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shrink-0">
-            <Phone className="w-6 h-6 text-primary animate-pulse" />
-          </div>
           <div className="text-center space-y-1">
-            <h2 className="text-xl font-display font-extrabold text-foreground">Placing Outbound...</h2>
-            <p className="text-xs text-muted-foreground font-medium">Status: {callStatus}</p>
+            <h2 className="text-base font-display font-extrabold text-foreground tracking-tight">Active Check-in Call</h2>
+            <div className="flex items-center justify-center gap-1.5">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Status: {callStatus}</p>
+            </div>
           </div>
+
+          <div className="w-full bg-secondary/35 border border-border/70 rounded-xl p-4 text-left space-y-1.5">
+            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-wider">Live Transcription Feed</p>
+            <div className="h-40 overflow-y-auto pr-1">
+              <p className="text-xs whitespace-pre-wrap font-mono text-foreground leading-relaxed font-semibold">
+                {liveTranscript || "Connecting and waiting for agent dialogue..."}
+              </p>
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={handleHangUpOutbound}
             disabled={!vapiCallId}
-            className="w-32 h-10 bg-destructive text-destructive-foreground rounded-xl font-bold hover:bg-destructive/90 transition-all text-xs cursor-pointer"
+            className="w-full sm:w-44 h-10 bg-destructive text-white rounded-xl font-bold hover:bg-destructive/90 transition-all text-xs cursor-pointer shadow shadow-destructive/20"
           >
-            Hang Up
+            End Check-in Call
           </button>
-          <div className="w-full bg-secondary/30 border border-border/50 rounded-xl p-4 text-left space-y-1.5">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Live Transcription</p>
-            <p className="text-xs whitespace-pre-wrap min-h-[56px] text-foreground leading-relaxed">
-              {liveTranscript || "Awaiting connection..."}
-            </p>
-          </div>
         </div>
       )}
 
+      {/* ── Summary Results Phase ── */}
       {phase === "completed" && summaryData && (
-        <div className="w-full max-w-3xl space-y-6 animate-fade-up">
-          <div className="bg-card border border-border/60 rounded-2xl shadow-card overflow-hidden">
-            <div className="bg-primary/5 p-6 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="w-full max-w-3xl mx-auto space-y-4 animate-fade-up">
+          <div className="bg-card border border-border shadow-card rounded-2xl overflow-hidden">
+            <div className="bg-primary/5 p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
                   <Clipboard className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-display font-extrabold text-foreground">AI Assessment Summary</h2>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase mt-0.5 tracking-wider">
-                    {summaryData.alert_type}
+                  <h2 className="text-sm font-display font-extrabold text-foreground">AI Assessment Summary</h2>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">
+                    {summaryData.alert_type || "General Check-in"}
                   </p>
                 </div>
               </div>
               <div
-                className={`px-4 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider ${
+                className={`px-4 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${
                   summaryData.risk_level === "high"
                     ? "bg-destructive/10 border-destructive/25 text-destructive"
                     : "bg-success/10 border-success/20 text-success"
@@ -632,85 +663,79 @@ export default function SimulateCall() {
               </div>
             </div>
 
-            <div className="p-6 space-y-5 text-left text-xs leading-relaxed">
-              <div className="p-4 rounded-xl border border-border/60 bg-secondary/25">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+            <div className="p-5 space-y-4 text-left text-xs leading-relaxed">
+              <div className="p-4 rounded-xl border border-border bg-secondary/20">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                   Executive Summary
                 </p>
-                <p className="text-sm font-semibold text-foreground leading-relaxed">{summaryData.summary}</p>
+                <p className="text-xs font-semibold text-foreground leading-relaxed">{summaryData.summary}</p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Triage Flag</p>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="p-4 rounded-xl border border-border bg-secondary/20 space-y-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Triage Status</p>
                   <p className="text-xs font-bold text-foreground">{summaryData.alert_type || "N/A"}</p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Symptom Tags</p>
+                <div className="p-4 rounded-xl border border-border bg-secondary/20 space-y-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Symptom Tags</p>
                   <div className="flex flex-wrap gap-1">
                     {summaryData.symptoms?.length ? (
                       summaryData.symptoms.map((s: any, idx: number) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 bg-background border border-border rounded text-[10px] font-medium"
+                          className="px-2 py-0.5 bg-background border border-border rounded-md text-[9px] font-bold"
                         >
                           {s}
                         </span>
                       ))
                     ) : (
-                      <span className="text-muted-foreground">No tags</span>
+                      <span className="text-muted-foreground">No symptoms flagged</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {(summaryData.diagnosis || summaryData.relevant_history) && (
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Working Diagnosis
-                    </p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl border border-border bg-secondary/20 space-y-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Working Diagnosis</p>
                     <p className="text-xs text-foreground font-bold">{summaryData.diagnosis}</p>
                   </div>
-                  <div className="p-4 rounded-xl border border-border/60 bg-secondary/25 space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prior History</p>
+                  <div className="p-4 rounded-xl border border-border bg-secondary/20 space-y-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Prior History</p>
                     <p className="text-xs text-foreground font-medium">{summaryData.relevant_history}</p>
                   </div>
                 </div>
               )}
 
               {summaryData.clinical_reasoning && (
-                <div className="p-4 rounded-xl border border-dashed border-border bg-secondary/10">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                    Clinical Reasoning
-                  </p>
+                <div className="p-4 rounded-xl border border-dashed border-border bg-secondary/10 space-y-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Clinical Reasoning</p>
                   <p className="text-xs text-foreground font-medium leading-relaxed">{summaryData.clinical_reasoning}</p>
                 </div>
               )}
 
               {summaryData.follow_up_plan && (
-                <div className="p-4 rounded-xl border border-primary/15 bg-primary/5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Follow-up Plan</p>
-                  <p className="text-xs text-foreground leading-relaxed">{summaryData.follow_up_plan}</p>
+                <div className="p-4 rounded-xl border border-primary/15 bg-primary/5 space-y-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Follow-up Plan</p>
+                  <p className="text-xs text-foreground font-semibold leading-relaxed">{summaryData.follow_up_plan}</p>
                 </div>
               )}
 
-              <div className="p-4 bg-destructive/5 border border-destructive/15 rounded-xl">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1">
-                  Immediate Recommendation
-                </p>
+              <div className="p-4 bg-destructive/5 border border-destructive/15 rounded-xl space-y-1">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-destructive">Immediate Action</p>
                 <p className="text-xs font-bold text-foreground leading-relaxed">{summaryData.action_required}</p>
               </div>
             </div>
 
-            <div className="p-6 bg-secondary/20 border-t border-border/50 flex flex-wrap gap-3">
+            <div className="p-4 bg-secondary/15 border-t border-border flex flex-wrap gap-2.5 text-xs">
               {summaryData?.call_db_id && (
                 <Link
                   to={`/dashboard/calls/${summaryData.call_db_id}`}
-                  className="inline-flex items-center gap-1.5 h-10 px-5 bg-gradient-primary text-primary-foreground font-bold rounded-xl shadow-glow text-xs cursor-pointer"
+                  className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-primary text-white font-bold rounded-xl shadow-glow text-[11px] cursor-pointer transition-all hover:scale-105"
                 >
-                  View Details <ArrowRight className="w-3.5 h-3.5" />
+                  View Details <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
                 </Link>
               )}
               <button
@@ -720,9 +745,9 @@ export default function SimulateCall() {
                   setSummaryData(null);
                   setVapiCallId(null);
                 }}
-                className="px-4 h-10 bg-secondary hover:bg-border/60 border border-border/80 text-foreground font-bold rounded-xl text-xs cursor-pointer"
+                className="px-4 py-2 bg-secondary hover:bg-border/60 border border-border text-foreground font-bold rounded-xl text-[11px] cursor-pointer"
               >
-                Place Another Check-in
+                Dial Another Call
               </button>
             </div>
           </div>

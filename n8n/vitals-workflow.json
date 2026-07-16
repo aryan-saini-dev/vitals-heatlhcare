@@ -1,0 +1,834 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/lookup_patient",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "de525ef1-ed19-49ec-84d1-1be6092c5d93",
+      "name": "Webhook lookup_patient",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        10864,
+        7632
+      ],
+      "webhookId": "<LOOKUP_PATIENT_WEBHOOK_ID>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst msg = body.message || {};\nconst calls = msg.toolCalls || msg.toolCallList || [];\nif (!calls.length) throw new Error('lookup_patient: no toolCalls in payload');\nconst call = calls[0];\nconst args = call?.function?.arguments || {};\nconst toolCallId = call?.id || '';\nconst phone = (args.phone_number || args.phoneNumber || '').toString().trim();\nconst name = (args.nameOptional || args.name || '').toString().trim();\nreturn [{ json: { toolCallId, phone, name, hasPhone: phone.length > 0 } }];"
+      },
+      "id": "3490bff6-70b2-4352-be2e-9006ff894e90",
+      "name": "Extract: lookup_patient",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11088,
+        7632
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e63a8e90-c651-401d-8ef9-8089201df1cd",
+              "leftValue": "={{ $json.hasPhone }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c29e4f9f-5787-453e-93f8-7f01d60e6402",
+      "name": "IF Phone Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        11312,
+        7632
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "<GOOGLE_SHEET_ID>",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Patients",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Phone Number",
+              "lookupValue": "={{ $('Extract: lookup_patient').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "87b4c18a-b477-4693-b99f-8f427259a142",
+      "name": "Google Sheets: Lookup",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        11536,
+        7520
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<GOOGLE_SHEETS_CREDENTIAL_ID>",
+          "name": "<GOOGLE_SHEETS_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { toolCallId } = $('Extract: lookup_patient').first().json;\nconst row = $input.first().json;\nconst found = !!(row['Full Name'] && row['Full Name'].toString().trim().length > 0);\nconst result = {\n  found,\n  fullName: row['Full Name'] || '',\n  chronicCondition: row['Chronic Condition'] || '',\n  email: row['Email'] || ''\n};\nconst variables = found ? {\n  full_name: row['Full Name'] || '',\n  email: row['Email'] || '',\n  chronic_condition: row['Chronic Condition'] || '',\n  medical_history: row['Medical History'] || ''\n} : null;\nconst payload = { results: [{ toolCallId, result, ...(variables && { variables }) }] };\nreturn [{ json: payload }];"
+      },
+      "id": "60cefeff-d422-4c24-9d41-9b032b33d3d0",
+      "name": "Format Phone Lookup Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11760,
+        7520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "c123bfc9-5420-4c6f-b40c-6b2138be3a7a",
+      "name": "Respond: Lookup",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        11984,
+        7520
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "<GOOGLE_SHEET_ID>",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Patients",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Full Name",
+              "lookupValue": "={{ $('Extract: lookup_patient').item.json.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3dccf834-f45b-4457-9f4e-16af92223f0c",
+      "name": "Google Sheets: Lookup by Name",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        11536,
+        7744
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<GOOGLE_SHEETS_CREDENTIAL_ID>",
+          "name": "<GOOGLE_SHEETS_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { toolCallId } = $('Extract: lookup_patient').first().json;\nconst items = $input.all();\nlet rows = items.map(i => i.json).filter(Boolean);\nif (rows.length === 1 && Array.isArray(rows[0].data)) rows = rows[0].data;\nconst validRows = rows.filter(r => r['Full Name'] && r['Full Name'].toString().trim().length > 0);\nlet result, variables = null;\nif (validRows.length === 1) {\n  const d = validRows[0];\n  result = { found: true, fullName: d['Full Name'] || '', chronicCondition: d['Chronic Condition'] || '', email: d['Email'] || '' };\n  variables = { full_name: d['Full Name'] || '', email: d['Email'] || '', chronic_condition: d['Chronic Condition'] || '', medical_history: d['Medical History'] || '' };\n} else if (validRows.length === 0) {\n  result = { found: false, needsPhone: true, reason: 'no matches' };\n} else {\n  result = { found: false, needsPhone: true, reason: 'multiple matches', count: validRows.length };\n}\nconst payload = { results: [{ toolCallId, result, ...(variables && { variables }) }] };\nreturn [{ json: payload }];"
+      },
+      "id": "12000b8d-e925-4feb-ae9f-0cf9f400f35f",
+      "name": "Evaluate Name Matches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11760,
+        7744
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "479cc073-daeb-4594-97e5-625d5f7d6f82",
+      "name": "Respond: Lookup by Name",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        11984,
+        7744
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/triage_symptoms",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2c43d7b1-fcec-4fce-803d-4895cb711c3c",
+      "name": "Webhook triage_symptoms",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        10864,
+        8064
+      ],
+      "webhookId": "<TRIAGE_WEBHOOK_ID>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst msg = body.message || {};\nconst calls = msg.toolCalls || msg.toolCallList || [];\nif (!calls.length) throw new Error('triage_symptoms: no toolCalls in payload');\nconst call = calls[0];\nconst args = call?.function?.arguments || {};\nconst toolCallId = call?.id || '';\nconst reportedSymptoms = (args.reported_symptoms || args.reportedSymptoms || '').toString().toLowerCase().trim();\nreturn [{ json: { toolCallId, reportedSymptoms } }];"
+      },
+      "id": "fb002a7d-c897-4e95-89a4-bdff741ffe06",
+      "name": "Extract: triage_symptoms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11088,
+        8064
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "<GOOGLE_SHEET_ID>",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Symptoms",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "88617610-6a33-4f92-bd3d-c8cb14f63037",
+      "name": "Google Sheets: Symptoms",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        11312,
+        8064
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<GOOGLE_SHEETS_CREDENTIAL_ID>",
+          "name": "<GOOGLE_SHEETS_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { toolCallId, reportedSymptoms } = $('Extract: triage_symptoms').first().json;\nconst rows = $input.all().map(i => i.json);\nconst matchedSymptoms = [];\nlet emergencyHit = false;\nlet hasHighRisk = false;\nfor (const r of rows) {\n  const symptomString = (r['Symptoms'] || '').toString().trim();\n  if (!symptomString) continue;\n  const sheetSymptoms = symptomString.toLowerCase().split(',').map(s => s.trim()).filter(s => s.length > 2);\n  if (sheetSymptoms.some(s => reportedSymptoms.includes(s))) {\n    matchedSymptoms.push(symptomString);\n    const emergency = (r['EmergencyTrigger'] ?? '').toString().toLowerCase();\n    if (['true', 'yes', '1'].includes(emergency)) emergencyHit = true;\n    if ((r['Risk'] || '').toString().toLowerCase() === 'high') hasHighRisk = true;\n  }\n}\nlet risk = 'high';\nlet reason = 'No symptom match found; defaulting to high risk.';\nif (matchedSymptoms.length > 0 && emergencyHit) {\n  risk = 'high'; reason = 'Matched emergency-trigger symptom.';\n} else if (matchedSymptoms.length > 0 && hasHighRisk) {\n  risk = 'high'; reason = 'Matched symptom marked high risk in sheet.';\n} else if (matchedSymptoms.length > 0) {\n  risk = 'low'; reason = 'Matched symptom marked low risk in sheet.';\n}\nconst payload = { results: [{ toolCallId, result: { risk, matchedSymptoms, reason } }] };\nreturn [{ json: payload }];"
+      },
+      "id": "d792492d-4798-463b-9a8f-abb700f6d0be",
+      "name": "Risk Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11536,
+        8064
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "f9cfab8a-a08b-4440-b591-db09cb63da43",
+      "name": "Respond: Triage",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        11760,
+        8064
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/force_book_sheet",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c156523b-850c-42f2-8ef6-8ccc9fe75413",
+      "name": "Webhook force_book_sheet",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        10864,
+        8592
+      ],
+      "webhookId": "<BOOKING_WEBHOOK_ID>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst msg = body.message || {};\nconst calls = msg.toolCalls || msg.toolCallList || [];\nif (!calls.length) throw new Error('force_book_sheet: no toolCalls in payload');\nconst call = calls[0];\nconst args = call?.function?.arguments || {};\nconst toolCallId = call?.id || '';\nconst appointmentTime = (args.appointment_time || args.appointmentTime || '').toString().trim();\nconst datePart = (() => { try { return appointmentTime.includes('T') ? appointmentTime.split('T')[0] : (appointmentTime || 'DATE_MISSING'); } catch(e) { return 'DATE_PARSE_ERROR'; } })();\nconst timePart = (() => { try { return appointmentTime.includes('T') ? appointmentTime.split('T')[1].replace('Z','') : (appointmentTime || 'TIME_MISSING'); } catch(e) { return 'TIME_PARSE_ERROR'; } })();\nreturn [{ json: {\n  toolCallId,\n  appointmentTime,\n  datePart,\n  timePart,\n  fullName: (args.full_name || args.fullName || 'UNKNOWN').toString().trim(),\n  phone: (args.phone_number || args.phoneNumber || '').toString().trim(),\n  reason: (args.reason || '').toString().trim(),\n  risk: (args.risk || '').toString().trim(),\n  notes: (args.notes || '').toString().trim()\n} }];"
+      },
+      "id": "d0d7be3c-c4cd-4592-bb76-3f3bb39e1aa1",
+      "name": "Extract: force_book_sheet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11088,
+        8592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "<GOOGLE_SHEET_ID>",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Calendar",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.datePart }}",
+            "Time": "={{ $json.timePart }}",
+            "Status": "Booked",
+            "Client Name": "={{ $json.fullName }}",
+            "Phone Number": "={{ $json.phone }}",
+            "Reason": "={{ $json.reason }}",
+            "Risk": "={{ $json.risk }}",
+            "Notes": "={{ $json.notes }}",
+            "TimestampUTC": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "19f517b7-4fc3-42c7-83d5-822926ca8a96",
+      "name": "Google Sheets: Book",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        11312,
+        8592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<GOOGLE_SHEETS_CREDENTIAL_ID>",
+          "name": "<GOOGLE_SHEETS_CREDENTIAL_NAME>"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { toolCallId, appointmentTime } = $('Extract: force_book_sheet').first().json;\nconst payload = { results: [{ toolCallId, result: { status: 'booked', appointmentTime, rowId: new Date().toISOString() } }] };\nreturn [{ json: payload }];"
+      },
+      "id": "6229ce9c-efce-40d4-b864-5e19566ba692",
+      "name": "Format Book Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11536,
+        8496
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "347f9c48-c8f0-4a4c-bbf5-976eb3eee295",
+      "name": "Respond: Book",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        11760,
+        8496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { phone } = $('Extract: force_book_sheet').first().json;\nconsole.log('[force_book_sheet] Webhook responded. Starting async email lookup for phone:', phone);\nreturn [{ json: { phone } }];"
+      },
+      "id": "26ce0e54-1b58-4535-95cb-9bc5728c8938",
+      "name": "Post-Respond Relay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11984,
+        8496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { toolCallId } = $('Extract: force_book_sheet').first().json;\nconsole.error('[force_book_sheet] Google Sheets append failed:', JSON.stringify($input.first().json));\nconst payload = { results: [{ toolCallId, result: { status: 'error', message: 'Booking could not be written to calendar. Please retry or contact support.' } }] };\nreturn [{ json: payload }];"
+      },
+      "id": "f9df684d-3895-4cfb-af12-ca9762d8d3b4",
+      "name": "Handle Book Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        11536,
+        8704
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "4713c1b8-4c39-4727-bc42-23f20c9657bf",
+      "name": "Respond: Book Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        11760,
+        8704
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "<GOOGLE_SHEET_ID>",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Patients",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Phone Number",
+              "lookupValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "33fcf86f-de3b-41b7-8ffe-69f397003059",
+      "name": "Google Sheets: Get Email",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        12208,
+        8496
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<GOOGLE_SHEETS_CREDENTIAL_ID>",
+          "name": "<GOOGLE_SHEETS_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-email",
+              "leftValue": "={{ $json.Email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2a6e404c-911d-47e6-a757-4e08384420e6",
+      "name": "Check if Email Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12432,
+        8496
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "Appointment Confirmed – <CLINIC_NAME>",
+        "message": "={{ (() => { const ex = $('Extract: force_book_sheet').first().json; const name = ex.fullName || 'Valued Patient'; const time = ex.appointmentTime || 'your scheduled time'; const reason = ex.reason || 'Clinical Consultation'; return 'Hello ' + name + ',<br><br>Your appointment has been successfully confirmed for <b>' + time + '</b>.<br><br><b>Reason for Visit:</b> ' + reason + '<br><br>If you need to reschedule, please call us directly.<br><br>Best regards,<br><b><CLINIC_NAME> Team</b>'; })() }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "cfecc4c8-94aa-4cb1-8db5-d5c22fc6cb6a",
+      "name": "Gmail: Send Confirmation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        12656,
+        8384
+      ],
+      "webhookId": "<EMAIL_WEBHOOK_ID>",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "<GMAIL_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $('Extract: force_book_sheet').first().json.phone || 'unknown';\nconsole.log('[force_book_sheet] No email on file for phone:', phone);\nreturn [{ json: { skipped: true, reason: 'no_email_found', phone } }];"
+      },
+      "id": "f0006f9c-06c9-48d6-85df-23560a85fb0a",
+      "name": "No Email: Log and Skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        12656,
+        8624
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Checking Details",
+        "height": 512,
+        "width": 2112
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        10752,
+        7424
+      ],
+      "typeVersion": 1,
+      "id": "a907061d-096c-45ae-9f40-7e9fcacd7cd0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Check symptoms and risk",
+        "height": 304,
+        "width": 2112,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        10752,
+        7984
+      ],
+      "typeVersion": 1,
+      "id": "c5ab25fc-aff0-4f6f-bea3-e3f40c1bbc3a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Booking appoitnment and updating details as well as sending gmail",
+        "height": 608,
+        "width": 2112,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        10752,
+        8320
+      ],
+      "typeVersion": 1,
+      "id": "3fa81ae5-c8f1-4d42-8d11-a0d6ac8e9fdd",
+      "name": "Sticky Note2"
+    }
+  ],
+  "connections": {
+    "Webhook lookup_patient": {
+      "main": [
+        [
+          {
+            "node": "Extract: lookup_patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract: lookup_patient": {
+      "main": [
+        [
+          {
+            "node": "IF Phone Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Phone Exists": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets: Lookup by Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Lookup": {
+      "main": [
+        [
+          {
+            "node": "Format Phone Lookup Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Phone Lookup Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Lookup by Name": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Name Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Name Matches": {
+      "main": [
+        [
+          {
+            "node": "Respond: Lookup by Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook triage_symptoms": {
+      "main": [
+        [
+          {
+            "node": "Extract: triage_symptoms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract: triage_symptoms": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Symptoms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Symptoms": {
+      "main": [
+        [
+          {
+            "node": "Risk Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Engine": {
+      "main": [
+        [
+          {
+            "node": "Respond: Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook force_book_sheet": {
+      "main": [
+        [
+          {
+            "node": "Extract: force_book_sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract: force_book_sheet": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Book",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Book": {
+      "main": [
+        [
+          {
+            "node": "Format Book Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Book Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Book Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Book",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Book": {
+      "main": [
+        [
+          {
+            "node": "Post-Respond Relay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post-Respond Relay": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Get Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Book Error": {
+      "main": [
+        [
+          {
+            "node": "Respond: Book Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Get Email": {
+      "main": [
+        [
+          {
+            "node": "Check if Email Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Email Exists": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Email: Log and Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "<N8N_INSTANCE_ID>"
+  }
+}

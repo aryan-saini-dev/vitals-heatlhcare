@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import Index from "./pages/Index.tsx";
@@ -21,7 +20,7 @@ import Alerts from "./pages/dashboard/Alerts.tsx";
 import Calls from "./pages/dashboard/Calls.tsx";
 import CallDetail from "./pages/dashboard/CallDetail.tsx";
 import SimulateCall from "./pages/dashboard/SimulateCall.tsx";
-import MisdiagnosisSolution from "./pages/dashboard/MisdiagnosisSolution.tsx";
+import MediLink from "./pages/dashboard/MediLink.tsx";
 
 const queryClient = new QueryClient();
 
@@ -46,7 +45,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
       <AuthProvider>
         <BrowserRouter
@@ -73,7 +71,7 @@ const App = () => (
               <Route path="calls" element={<Calls />} />
               <Route path="calls/simulate" element={<SimulateCall />} />
               <Route path="calls/:id" element={<CallDetail />} />
-              <Route path="misdiagnosis-solution" element={<MisdiagnosisSolution />} />
+              <Route path="medilink" element={<MediLink />} />
             </Route>
 
             {/* Catch-all */}

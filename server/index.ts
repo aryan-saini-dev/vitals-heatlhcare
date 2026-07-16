@@ -38,6 +38,7 @@ try {
 // ─── WhatsApp Client ──────────────────────────────────────────────────────────
 let waClient: any = null;
 let waReady = false;
+let startWhatsAppClient: () => void = () => {};
 
 try {
   // whatsapp-web.js is CommonJS — must be loaded via nodeRequire in an ES-module server
@@ -47,37 +48,49 @@ try {
   LocalAuth = wweb.LocalAuth;
   MessageMedia = wweb.MessageMedia;
 
-  waClient = new WAClient({
-    authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
-    puppeteer: {
-      executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    }
-  });
-  waClient.on("qr", (qr: string) => {
-    console.log("\n[WhatsApp] ====== SCAN QR CODE =====");
-    qrcode.generate(qr, { small: true });
-    console.log("[WhatsApp] Open WhatsApp → Linked Devices → Link a Device, then scan above.");
-  });
-  waClient.on("ready", () => {
-    waReady = true;
-    console.log("[WhatsApp] ✅ Client ready — PDF reports will be auto-sent via WhatsApp.");
-  });
-  waClient.on("authenticated", () => {
-    console.log("[WhatsApp] Authenticated — loading session...");
-  });
-  waClient.on("auth_failure", (msg: string) => {
+  startWhatsAppClient = function() {
     waReady = false;
-    console.error("[WhatsApp] ❌ Auth failed:", msg);
-  });
-  waClient.on("disconnected", (reason: string) => {
-    waReady = false;
-    console.warn("[WhatsApp] Disconnected:", reason);
-  });
-  console.log("[WhatsApp] Initializing (Puppeteer/Chromium starting — may take 30-60s on first run)...");
-  waClient.initialize().catch((e: any) => {
-    console.error("[WhatsApp] initialize() threw:", e?.message || e);
-  });
+    console.log("[WhatsApp] Starting client instance...");
+    waClient = new WAClient({
+      authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
+      puppeteer: {
+        executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
+      }
+    });
+
+    waClient.on("qr", (qr: string) => {
+      console.log("\n[WhatsApp] ====== SCAN QR CODE =====");
+      qrcode.generate(qr, { small: true });
+      console.log("[WhatsApp] Open WhatsApp → Linked Devices → Link a Device, then scan above.");
+    });
+
+    waClient.on("ready", () => {
+      waReady = true;
+      console.log("[WhatsApp] ✅ Client ready — PDF reports will be auto-sent via WhatsApp.");
+    });
+
+    waClient.on("authenticated", () => {
+      console.log("[WhatsApp] Authenticated — loading session...");
+    });
+
+    waClient.on("auth_failure", (msg: string) => {
+      waReady = false;
+      console.error("[WhatsApp] ❌ Auth failed:", msg);
+    });
+
+    waClient.on("disconnected", (reason: string) => {
+      waReady = false;
+      console.warn("[WhatsApp] Disconnected:", reason);
+    });
+
+    console.log("[WhatsApp] Initializing (Puppeteer/Chromium starting — may take 30-60s on first run)...");
+    waClient.initialize().catch((e: any) => {
+      console.error("[WhatsApp] initialize() threw:", e?.message || e);
+    });
+  }
+
+  startWhatsAppClient();
 } catch (waInitErr: any) {
   console.error("[WhatsApp] ❌ Init failed (non-fatal):", waInitErr?.message || waInitErr);
   console.warn("[WhatsApp] WhatsApp PDF delivery disabled. Manual 'Send on WhatsApp' button will return 503.");
@@ -995,9 +1008,10 @@ app.post(["/api/whatsapp/send-report/:callId", "/api/calls/:callId/report/send-w
       .eq("id", call.patient_id)
       .single();
 
-    if (!patient?.phone_number) {
+    const targetPhone = String(req.body.phone || patient?.phone_number || "").trim();
+    if (!targetPhone) {
       return res.status(400).json({
-        error: "Patient has no phone_number registered. Add it in the patients table first.",
+        error: "Patient has no phone_number registered. Add it in the patients table first, or supply one.",
       });
     }
 
@@ -1014,8 +1028,8 @@ app.post(["/api/whatsapp/send-report/:callId", "/api/calls/:callId/report/send-w
       return res.status(400).json({ error: "No AI Report data available for this call." });
     }
 
-    const patientName = String(call.vitals_data?.PatientName || patient.name || "Unknown");
-    const patientCondition = String(call.vitals_data?.PatientCondition || patient.condition || "N/A");
+    const patientName = String(call.vitals_data?.PatientName || patient?.name || "Unknown");
+    const patientCondition = String(call.vitals_data?.PatientCondition || patient?.condition || "N/A");
     const patientAge = String(call.vitals_data?.PatientAge || "");
     const doctorOnFile = String(call.vitals_data?.DoctorEmail || "").trim();
 
@@ -1046,17 +1060,41 @@ app.post(["/api/whatsapp/send-report/:callId", "/api/calls/:callId/report/send-w
 
     // 1. Send the Report PDF with schedule details in the description
     await sendWhatsappPdf(
-      patient.phone_number,
+      targetPhone,
       pdfBuffer,
-      `${patient.name || "Patient"} — Clinical Report.pdf`,
-      `*Vitals AI Report* for ${patient.name || "Patient"}\n` +
+      `${patientName} — Clinical Report.pdf`,
+      `*Vitals AI Report* for ${patientName}\n` +
       (riskLevel ? `Risk: *${riskLevel}* | ${alertType}\n` : "") +
       `Summary: ${summary}` + scheduleText
     );
 
-    return res.json({ ok: true, sentTo: patient.phone_number });
+    return res.json({ ok: true, sentTo: targetPhone });
   } catch (e: any) {
     console.error("[WhatsApp] manual send error:", e);
+    const isBrowserCrash =
+      e?.message?.includes("detached Frame") ||
+      e?.message?.includes("Protocol error") ||
+      e?.message?.includes("Session closed") ||
+      e?.message?.includes("browser has has been closed") ||
+      e?.message?.includes("crashed");
+
+    if (isBrowserCrash && waClient) {
+      console.warn("[WhatsApp] Puppeteer browser issue detected. Resetting and re-initializing client...");
+      waReady = false;
+      try {
+        await waClient.destroy();
+      } catch {}
+      setTimeout(() => {
+        try {
+          startWhatsAppClient();
+        } catch (initErr) {
+          console.error("[WhatsApp] re-init failed:", initErr);
+        }
+      }, 1000);
+      return res.status(503).json({
+        error: "WhatsApp connection was lost. We are automatically restarting the connection – please scan/refresh in 15 seconds.",
+      });
+    }
     return res.status(500).json({ error: e?.message || "Internal error" });
   }
 });

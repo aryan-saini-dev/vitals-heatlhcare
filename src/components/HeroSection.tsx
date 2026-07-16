@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 import heroImage from "@/assets/hero-robot-patient.jpg";
+import landingBg from "@/assets/landing_page.png";
 
 function Pill({ icon: Icon, children, color = "primary" }: { icon: any; children: React.ReactNode; color?: string }) {
   const colorMap: Record<string, string> = {
@@ -23,16 +24,23 @@ function Pill({ icon: Icon, children, color = "primary" }: { icon: any; children
 export default function HeroSection() {
   return (
     <section id="top" className="relative overflow-hidden bg-gradient-hero">
-      {/* Decorative background layers */}
-      <div className="pointer-events-none absolute inset-0 medical-grid opacity-60" />
-      <div className="pointer-events-none absolute right-10 top-24 h-40 w-40 dot-pattern opacity-50" />
-      <div className="pointer-events-none absolute left-6 bottom-24 h-32 w-32 dot-pattern opacity-40" />
-      <div className="pointer-events-none absolute -right-40 -top-20 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -left-32 top-40 h-80 w-80 rounded-full bg-info/15 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/3 bottom-0 h-72 w-72 rounded-full bg-primary-glow/10 blur-3xl" />
+      {/* Premium Desktop Background Image - brought by user */}
+      <img
+        src={landingBg}
+        alt=""
+        className="hidden md:block pointer-events-none absolute inset-0 h-full w-full object-cover select-none z-0"
+      />
 
-      {/* Abstract connecting lines (SVG) */}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18]" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      {/* Decorative mobile-only background layers */}
+      <div className="md:hidden pointer-events-none absolute inset-0 medical-grid opacity-60" />
+      <div className="md:hidden pointer-events-none absolute right-10 top-24 h-40 w-40 dot-pattern opacity-50" />
+      <div className="md:hidden pointer-events-none absolute left-6 bottom-24 h-32 w-32 dot-pattern opacity-40" />
+      <div className="md:hidden pointer-events-none absolute -right-40 -top-20 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-3xl" />
+      <div className="md:hidden pointer-events-none absolute -left-32 top-40 h-80 w-80 rounded-full bg-info/15 blur-3xl" />
+      <div className="md:hidden pointer-events-none absolute left-1/3 bottom-0 h-72 w-72 rounded-full bg-primary-glow/10 blur-3xl" />
+
+      {/* Abstract mobile-only connecting lines (SVG) */}
+      <svg className="md:hidden pointer-events-none absolute inset-0 h-full w-full opacity-[0.18]" xmlns="http://www.w3.org/2000/svg" aria-hidden>
         <defs>
           <linearGradient id="lineGrad" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor="oklch(0.52 0.22 255)" stopOpacity="0.0" />
@@ -44,7 +52,7 @@ export default function HeroSection() {
         <path d="M0,520 C260,460 420,600 720,500 S1140,400 1440,500" stroke="url(#lineGrad)" strokeWidth="1" fill="none" />
       </svg>
 
-      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+      <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
         {/* LEFT */}
         <div className="animate-fade-up">
           <Pill icon={Shield}>AI-Powered Healthcare</Pill>
@@ -86,9 +94,11 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* RIGHT: Image with floating cards */}
-        <div className="relative animate-fade-up [animation-delay:120ms]">
-          <div className="relative mx-auto aspect-square w-full max-w-xl">
+        {/* RIGHT: Image with floating cards - Blended desktop version vs Boxed mobile version */}
+        <div className="relative animate-fade-up [animation-delay:120ms] lg:w-[115%] lg:-mr-16">
+          
+          {/* Mobile phone layout: Original square boxed design */}
+          <div className="relative mx-auto aspect-square w-full max-w-xl md:hidden">
             {/* Soft halo behind image */}
             <div className="absolute inset-6 rounded-[2rem] bg-gradient-to-br from-primary/15 via-info/10 to-transparent blur-2xl" />
             {/* Dotted decoration */}
@@ -138,6 +148,52 @@ export default function HeroSection() {
               </div>
             </div>
           </div>
+
+          {/* Desktop tablet layout: Wide blended layout matching reference */}
+          <div className="hidden md:block relative mx-auto aspect-[1.4/1] w-full max-w-2xl">
+            {/* Soft halo behind image */}
+            <div className="absolute inset-6 bg-gradient-to-br from-primary/10 via-info/5 to-transparent blur-2xl" />
+            {/* Dotted decoration */}
+            <div className="absolute -right-4 top-8 h-24 w-24 dot-pattern opacity-60" />
+            <div className="absolute bottom-12 left-4 h-20 w-20 dot-pattern opacity-50" />
+
+            {/* Omit duplicate heroImage on PC since it is already integrated into the landingBg background image */}
+
+            {/* 98% card */}
+            <div className="absolute -right-[20%] top-0 z-20 rounded-2xl border border-border bg-card/95 p-4 shadow-card backdrop-blur animate-float hover:scale-105 transition-transform">
+              <div className="flex flex-col items-start gap-1.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 ring-1 ring-primary/15">
+                  <Shield className="h-4 w-4 text-primary" />
+                </div>
+                <div className="font-display text-3xl font-extrabold text-primary leading-none">98%</div>
+                <div className="text-[11px] font-medium text-muted-foreground leading-tight">
+                  Successful Check-ins<br />This Month
+                </div>
+                <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success">
+                  ↑ 18% from last month
+                </div>
+              </div>
+            </div>
+
+            {/* Voice Check-in card */}
+            <div className="absolute bottom-12 left-6 z-20 rounded-2xl border border-border bg-card/95 p-3 shadow-card backdrop-blur animate-float [animation-delay:0.8s] hover:scale-105 transition-transform">
+              <div className="flex items-center gap-3">
+                {/* mini waveform */}
+                <div className="flex h-8 items-end gap-0.5">
+                  {[6, 12, 18, 10, 22, 14, 8, 16, 10].map((h, i) => (
+                    <span key={i} className="w-0.5 rounded-full bg-primary/70" style={{ height: `${h}px`, animation: `float 1.${i}s ease-in-out infinite` }} />
+                  ))}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-foreground">Voice Check-in</div>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Active Session
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
