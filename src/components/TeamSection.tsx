@@ -31,10 +31,34 @@ function SectionHeader({ pill, pillIcon, pillColor, title, accent, sub }: any) {
 
 export default function TeamSection() {
   const members = [
-    { name: "Aryan Saini", role: "Team Leader", desc: "Leads product vision and strategy to drive impactful healthcare innovation.", color: "primary" },
-    { name: "Archee Sinha", role: "Member", desc: "AI & NLP specialist focused on building intelligent, human-like voice experiences.", color: "info" },
-    { name: "Aryan Gusain", role: "Member", desc: "Backend engineer ensuring scalable, reliable & secure healthcare solutions.", color: "warning" },
-    { name: "Darshita Gupta", role: "Member", desc: "Product & design thinker crafting seamless and intuitive user experiences.", color: "success" },
+    {
+      name: "Aryan Saini",
+      role: "Team Leader",
+      desc: "Leads product vision and strategy to drive impactful healthcare innovation.",
+      color: "primary",
+      linkedin: "https://www.linkedin.com/in/aryan-saini-o9000/"
+    },
+    {
+      name: "Archee Sinha",
+      role: "Member",
+      desc: "AI & NLP specialist focused on building intelligent, human-like voice experiences.",
+      color: "info",
+      linkedin: "https://www.linkedin.com/in/archee-sinha-904695297"
+    },
+    {
+      name: "Aryan Gusain",
+      role: "Member",
+      desc: "Backend engineer ensuring scalable, reliable & secure healthcare solutions.",
+      color: "warning",
+      linkedin: "https://www.linkedin.com/in/aryan-gusain-086664295/"
+    },
+    {
+      name: "Darshita Gupta",
+      role: "Member",
+      desc: "Product & design thinker crafting seamless and intuitive user experiences.",
+      color: "success",
+      linkedin: "https://www.linkedin.com/in/darshita-gupta-86b458358/"
+    },
   ];
 
   const dotMap: Record<string, string> = {
@@ -87,7 +111,9 @@ export default function TeamSection() {
               </span>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{m.desc}</p>
               <a
-                href="#"
+                href={m.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={`${m.name} on LinkedIn`}
                 className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${badgeMap[m.color]} hover:scale-[1.03] hover:shadow-soft`}
               >

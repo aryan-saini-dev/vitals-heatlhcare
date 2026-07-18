@@ -36,10 +36,20 @@ export default function Login() {
     setLoading(false);
   };
 
-  const enterDemoMode = () => {
-    signInWithMock("aryan@vitals.ai");
-    toast.success("Logged in via Demo Mode");
-    navigate("/dashboard", { replace: true });
+  const enterDemoMode = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: "aryansaini2004feb@gmail.com",
+      password: "123456",
+    });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Successfully logged in via Demo Mode!");
+      navigate("/dashboard", { replace: true });
+    }
+    setLoading(false);
   };
 
   return (
