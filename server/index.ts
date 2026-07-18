@@ -13,7 +13,7 @@ import PDFDocument from "pdfkit";
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as SibApiV3Sdk from "@getbrevo/brevo";
+// Email is sent via Brevo REST API (fetch) — no SDK needed
 // WhatsApp — loaded via nodeRequire (whatsapp-web.js is CommonJS-only)
 // These are set after nodeRequire is defined below.
 let WAClient: any;
@@ -1167,31 +1167,43 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
     const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
     const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
 
-    // Send via Brevo HTTP API (works on Render free tier — uses HTTPS not SMTP)
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-    const apiKey = apiInstance.authentications as any;
-    apiKey["apiKey"].apiKey = brevoApiKey;
-
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-    sendSmtpEmail.subject = `Clinical Report: ${patientName}`;
-    sendSmtpEmail.htmlContent = `
-      <h2>Vitals AI Clinical Report</h2>
-      <p><strong>Patient:</strong> ${patientName}</p>
-      <p><strong>Risk Level:</strong> ${riskLevel}</p>
-      <p><strong>Alert Type:</strong> ${alertType}</p>
-      <p><strong>Summary:</strong> ${summary}</p>
-      <p>Please find the detailed PDF report attached.</p>
-    `;
-    sendSmtpEmail.sender = { name: "Vitals AI", email: process.env.BREVO_SENDER_EMAIL || "xyaminokiritox@gmail.com" };
-    sendSmtpEmail.to = [{ email }];
-    sendSmtpEmail.attachment = [
-      {
-        content: pdfBuffer.toString("base64"),
-        name: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
+    // Send via Brevo REST API (HTTPS, works on Render free tier)
+    const brevoResp = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": brevoApiKey,
+        "content-type": "application/json",
       },
-    ];
+      body: JSON.stringify({
+        sender: {
+          name: "Vitals AI",
+          email: process.env.BREVO_SENDER_EMAIL || "xyaminokiritox@gmail.com",
+        },
+        to: [{ email }],
+        subject: `Clinical Report: ${patientName}`,
+        htmlContent: `
+          <h2>Vitals AI Clinical Report</h2>
+          <p><strong>Patient:</strong> ${patientName}</p>
+          <p><strong>Risk Level:</strong> ${riskLevel}</p>
+          <p><strong>Alert Type:</strong> ${alertType}</p>
+          <p><strong>Summary:</strong> ${summary}</p>
+          <p>Please find the detailed PDF report attached.</p>
+        `,
+        attachment: [
+          {
+            content: pdfBuffer.toString("base64"),
+            name: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
+          },
+        ],
+      }),
+    });
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    if (!brevoResp.ok) {
+      const errBody = await brevoResp.json().catch(() => ({}));
+      console.error("[Brevo] send failed:", errBody);
+      return res.status(500).json({ error: errBody?.message || "Email delivery failed via Brevo." });
+    }
 
     return res.json({ ok: true, sentTo: email });
   } catch (e: any) {
