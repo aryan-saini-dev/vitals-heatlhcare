@@ -13,7 +13,7 @@ import PDFDocument from "pdfkit";
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 // WhatsApp — loaded via nodeRequire (whatsapp-web.js is CommonJS-only)
 // These are set after nodeRequire is defined below.
 let WAClient: any;
@@ -1117,11 +1117,11 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
       return res.status(400).json({ error: "A valid target email address is required." });
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      return res.status(503).json({ error: "Resend API key is not configured on the server." });
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    if (!gmailUser || !gmailAppPassword) {
+      return res.status(503).json({ error: "Gmail credentials (GMAIL_USER, GMAIL_APP_PASSWORD) are not configured on the server." });
     }
-    const resend = new Resend(resendApiKey);
 
     // Fetch the call
     const { data: call, error: callErr } = await supabase
@@ -1163,14 +1163,19 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
       report,
       doctorEmail: doctorOnFile || undefined,
     });
-    
+
     const summary = String(call.vitals_data?.Summary || "See attached report.");
     const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
     const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
 
-    const { data, error } = await resend.emails.send({
-      from: "Vitals AI <onboarding@resend.dev>",
-      to: [email],
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: gmailUser, pass: gmailAppPassword },
+    });
+
+    await transporter.sendMail({
+      from: `"Vitals AI" <${gmailUser}>`,
+      to: email,
       subject: `Clinical Report: ${patientName}`,
       html: `
         <h2>Vitals AI Clinical Report</h2>
@@ -1188,12 +1193,7 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
       ],
     });
 
-    if (error) {
-      console.error("[Resend] Failed to send email:", error);
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.json({ ok: true, sentTo: email, resendId: data?.id });
+    return res.json({ ok: true, sentTo: email });
   } catch (e: any) {
     console.error("[Email] manual send error:", e);
     return res.status(500).json({ error: e?.message || "Internal error" });
