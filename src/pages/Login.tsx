@@ -21,6 +21,7 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    localStorage.removeItem("vitals_mock_email");
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -31,13 +32,13 @@ export default function Login() {
       toast.error(error.message);
     } else {
       toast.success("Successfully logged in!");
-      navigate("/dashboard", { replace: true });
     }
     setLoading(false);
   };
 
   const enterDemoMode = async () => {
     setLoading(true);
+    localStorage.removeItem("vitals_mock_email");
     const { error } = await supabase.auth.signInWithPassword({
       email: "aryansaini2004feb@gmail.com",
       password: "123456",
@@ -47,7 +48,6 @@ export default function Login() {
       toast.error(error.message);
     } else {
       toast.success("Successfully logged in via Demo Mode!");
-      navigate("/dashboard", { replace: true });
     }
     setLoading(false);
   };
