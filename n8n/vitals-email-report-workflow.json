@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nfor (let item of items) {\n  const base64 = item.json.pdfBase64;\n  const filename = item.json.pdfFilename || 'Clinical_Report.pdf';\n  if (base64) {\n    item.binary = {\n      attachment_0: {\n        data: base64,\n        mimeType: 'application/pdf',\n        fileName: filename\n      }\n    };\n  }\n}\nreturn items;"
+        "jsCode": "const items = $input.all();\nfor (let item of items) {\n  const base64 = item.json.body?.pdfBase64;\n  const filename = item.json.body?.pdfFilename || 'Clinical_Report.pdf';\n  if (base64) {\n    item.binary = {\n      attachment_0: {\n        data: base64,\n        mimeType: 'application/pdf',\n        fileName: filename\n      }\n    };\n  }\n}\nreturn items;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -35,9 +35,9 @@
         "resource": "message",
         "operation": "send",
         "emailType": "html",
-        "toEmail": "={{ $json.to }}",
-        "subject": "={{ $json.subject }}",
-        "htmlBody": "={{ $json.htmlContent }}",
+        "sendTo": "={{ $json.body.to }}",
+        "subject": "={{ $json.body.subject }}",
+        "message": "={{ $json.body.htmlContent }}",
         "additionalFields": {
           "attachments": "attachment_0"
         }
