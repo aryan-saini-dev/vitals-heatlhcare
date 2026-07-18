@@ -1,0 +1,83 @@
+{
+  "name": "Vitals Email Report Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vitals-email-report",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-node-id",
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nfor (let item of items) {\n  const base64 = item.json.pdfBase64;\n  const filename = item.json.pdfFilename || 'Clinical_Report.pdf';\n  if (base64) {\n    item.binary = {\n      attachment_0: {\n        data: base64,\n        mimeType: 'application/pdf',\n        fileName: filename\n      }\n    };\n  }\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "code-node-id",
+      "name": "Base64 to Binary"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "emailType": "html",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "htmlBody": "={{ $json.htmlContent }}",
+        "additionalFields": {
+          "attachments": "attachment_0"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "gmail-node-id",
+      "name": "Gmail"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Base64 to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Base64 to Binary": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

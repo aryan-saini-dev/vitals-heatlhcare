@@ -1167,20 +1167,17 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
     const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
     const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
 
-    // Send via Brevo REST API (HTTPS, works on Render free tier)
-    const brevoResp = await fetch("https://api.brevo.com/v3/smtp/email", {
+    const n8nWebhookUrl = process.env.N8N_EMAIL_WEBHOOK_URL;
+    if (!n8nWebhookUrl) {
+      return res.status(503).json({ error: "N8N_EMAIL_WEBHOOK_URL is not configured on the server." });
+    }
+
+    // Send via n8n webhook → Gmail node (perfect deliverability, no SMTP blocking)
+    const n8nResp = await fetch(n8nWebhookUrl, {
       method: "POST",
-      headers: {
-        "accept": "application/json",
-        "api-key": brevoApiKey,
-        "content-type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sender: {
-          name: "Vitals AI",
-          email: process.env.BREVO_SENDER_EMAIL || "xyaminokiritox@gmail.com",
-        },
-        to: [{ email }],
+        to: email,
         subject: `Clinical Report: ${patientName}`,
         htmlContent: `
           <h2>Vitals AI Clinical Report</h2>
@@ -1190,19 +1187,17 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
           <p><strong>Summary:</strong> ${summary}</p>
           <p>Please find the detailed PDF report attached.</p>
         `,
-        attachment: [
-          {
-            content: pdfBuffer.toString("base64"),
-            name: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
-          },
-        ],
+        pdfBase64: pdfBuffer.toString("base64"),
+        pdfFilename: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
+        patientName,
+        riskLevel,
       }),
     });
 
-    if (!brevoResp.ok) {
-      const errBody = await brevoResp.json().catch(() => ({}));
-      console.error("[Brevo] send failed:", errBody);
-      return res.status(500).json({ error: errBody?.message || "Email delivery failed via Brevo." });
+    if (!n8nResp.ok) {
+      const errBody = await n8nResp.json().catch(() => ({}));
+      console.error("[n8n] email webhook failed:", errBody);
+      return res.status(500).json({ error: errBody?.message || "Email delivery via n8n failed." });
     }
 
     return res.json({ ok: true, sentTo: email });
