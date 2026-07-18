@@ -1,55 +1,64 @@
 {
-  "name": "Vitals Email Report Workflow",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "vitals-email-report",
-        "responseMode": "onReceived",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        0,
-        0
+        5088,
+        96
       ],
-      "id": "webhook-node-id",
-      "name": "Webhook"
+      "id": "5f5abeec-1c93-4d0c-9202-b575f415731e",
+      "name": "Webhook",
+      "webhookId": "b907132d-aac5-4aa3-baad-162a4721e18c"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nfor (let item of items) {\n  const base64 = item.json.body?.pdfBase64;\n  const filename = item.json.body?.pdfFilename || 'Clinical_Report.pdf';\n  if (base64) {\n    item.binary = {\n      data: {\n        data: base64,\n        mimeType: 'application/pdf',\n        fileName: filename\n      }\n    };\n  }\n}\nreturn items;"
+        "jsCode": "const items = $input.all();\nfor (let item of items) {\n  const base64 = item.json.body?.pdfBase64;\n  const filename = item.json.body?.pdfFilename || 'Clinical_Report.pdf';\n  if (base64) {\n    const buffer = Buffer.from(base64, 'base64');\n    item.binary = {\n      data: await this.helpers.prepareBinaryData(buffer, filename, 'application/pdf')\n    };\n  }\n}\nreturn items;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        0
+        5312,
+        96
       ],
-      "id": "code-node-id",
+      "id": "30043300-23bb-4c33-aea0-fcf85cca4c83",
       "name": "Base64 to Binary"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "emailType": "html",
         "sendTo": "={{ $json.body.to }}",
         "subject": "={{ $json.body.subject }}",
         "message": "={{ $json.body.htmlContent }}",
         "options": {
-          "attachments": "data"
+          "attachmentsUi": {
+            "attachmentsValues": [
+              {
+                "binaryPropertyName": "data"
+              }
+            ]
+          }
         }
       },
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2,
+      "typeVersion": 2.1,
       "position": [
-        440,
-        0
+        5536,
+        96
       ],
-      "id": "gmail-node-id",
-      "name": "Gmail"
+      "id": "c14112a2-127a-4bbf-85f4-156a8d9e47da",
+      "name": "Gmail",
+      "webhookId": "9ca89bde-689a-4d33-867d-c8fcf0a40051",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "nyoxW6L6Nty6IpzU",
+          "name": "Gmail account"
+        }
+      }
     }
   ],
   "connections": {
@@ -76,8 +85,9 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fabf5b7fedb3e62a81c9298b19706249ee128011bf9d94867681020c16f8b741"
   }
 }
