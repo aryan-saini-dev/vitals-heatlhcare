@@ -6,7 +6,7 @@ import {
   ArrowLeft, Sparkles, Loader2, MessageSquare,
   RefreshCw, Check, X, Download,
   ChevronDown, ChevronUp, AlertTriangle, Shield, Activity,
-  Clock, Mic, MicOff,
+  Clock, Mic, MicOff, Mail,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -105,6 +105,11 @@ export default function CallDetail() {
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState("");
   const [customPhone, setCustomPhone] = useState("");
+
+  // Email Modal states
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [targetEmail, setTargetEmail] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   // Collapsible state for left panel
   const [showDetails, setShowDetails] = useState(false);
@@ -237,6 +242,34 @@ export default function CallDetail() {
     }
   };
 
+  const sendOnEmail = async (emailAddr: string) => {
+    if (!call || !session?.access_token) return;
+    setEmailSending(true);
+    try {
+      const resp = await fetch(apiUrl(`/api/calls/${call.id}/report/send-email`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ email: emailAddr })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) {
+        toast.success(`Email sent to ${emailAddr}.`);
+        setIsEmailModalOpen(false);
+      }
+      else {
+        toast.error(data?.error || "Email delivery failed.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Connection error.");
+    }
+    finally {
+      setEmailSending(false);
+    }
+  };
+
   const generateReport = async () => {
     if (!call || !session?.access_token) return;
     setReportGenerating(true);
@@ -337,6 +370,15 @@ export default function CallDetail() {
     void sendOnWhatsApp(cleaned);
   };
 
+  const handleEmailSendSubmit = () => {
+    const finalEmail = targetEmail.trim();
+    if (!finalEmail || !finalEmail.includes("@")) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    void sendOnEmail(finalEmail);
+  };
+
   return (
     <div className="space-y-4 max-w-5xl mx-auto animate-fade-up">
 
@@ -382,6 +424,10 @@ export default function CallDetail() {
             <button type="button" onClick={() => setIsWaModalOpen(true)}
               className="inline-flex items-center gap-1.5 h-8.5 px-4 rounded-full font-bold text-xs transition-all hover:scale-105 cursor-pointer bg-[#25D366] text-white hover:bg-[#20ba5a] border-none shadow-md">
               <MessageSquare className="w-3.5 h-3.5" /> Whatsapp Report
+            </button>
+            <button type="button" onClick={() => setIsEmailModalOpen(true)}
+              className="inline-flex items-center gap-1.5 h-8.5 px-4 rounded-full font-bold text-xs transition-all hover:scale-105 cursor-pointer bg-blue-600 text-white hover:bg-blue-500 border-none shadow-md">
+              <Mail className="w-3.5 h-3.5" /> Email Report
             </button>
           </div>
         </div>
@@ -765,6 +811,42 @@ export default function CallDetail() {
               className="bg-[#25D366] hover:bg-[#20ba5a] text-white border-none font-bold"
             >
               {waSending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Sending...</> : "Send Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Email Overrides Modal ── */}
+      <Dialog open={isEmailModalOpen} onOpenChange={setIsEmailModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display font-bold text-base">Send Prescription via Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-3 text-xs">
+            <p className="text-muted-foreground leading-relaxed">
+              Enter the destination email address to send the patient's clinical report.
+            </p>
+
+            <div className="space-y-1.5">
+              <label htmlFor="target-email" className="font-semibold text-muted-foreground">Email Address</label>
+              <input
+                id="target-email"
+                type="email"
+                placeholder="e.g. doctor@clinic.com"
+                value={targetEmail}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetEmail(e.target.value)}
+                className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-xs font-semibold ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-primary/50"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setIsEmailModalOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleEmailSendSubmit}
+              disabled={emailSending || !targetEmail.trim()}
+              className="bg-blue-600 hover:bg-blue-500 text-white border-none font-bold"
+            >
+              {emailSending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Sending...</> : "Send Email"}
             </Button>
           </DialogFooter>
         </DialogContent>

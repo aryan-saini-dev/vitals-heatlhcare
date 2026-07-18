@@ -13,6 +13,7 @@ import PDFDocument from "pdfkit";
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Resend } from "resend";
 // WhatsApp — loaded via nodeRequire (whatsapp-web.js is CommonJS-only)
 // These are set after nodeRequire is defined below.
 let WAClient: any;
@@ -1099,8 +1100,106 @@ app.post(["/api/whatsapp/send-report/:callId", "/api/calls/:callId/report/send-w
   }
 });
 
+/** POST /api/calls/:callId/report/send-email
+ *  Manually send a call's PDF report to an email address via Resend. */
+app.post("/api/calls/:callId/report/send-email", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const auth = await authenticateRequest(token);
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
 
-app.get("/api/debug/vapi-config", (_req, res) => {
+    const { callId } = req.params;
+    const { supabase } = auth;
+    const { email } = req.body;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "A valid target email address is required." });
+    }
+
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      return res.status(503).json({ error: "Resend API key is not configured on the server." });
+    }
+    const resend = new Resend(resendApiKey);
+
+    // Fetch the call
+    const { data: call, error: callErr } = await supabase
+      .from("calls")
+      .select("id, patient_id, vitals_data, docuuid, duration_seconds, transcript")
+      .eq("id", callId)
+      .single();
+
+    if (callErr || !call) {
+      return res.status(404).json({ error: "Call not found" });
+    }
+
+    // Fetch patient
+    const { data: patient } = await supabase
+      .from("patients")
+      .select("id, name, condition")
+      .eq("id", call.patient_id)
+      .single();
+
+    // Dynamically generate the PDF
+    const reportRaw = call.vitals_data?.ReportData || null;
+    const report = reportRaw ? normalizeReportData(reportRaw) : null;
+    if (!report) {
+      return res.status(400).json({ error: "No AI Report data available for this call." });
+    }
+
+    const patientName = String(call.vitals_data?.PatientName || patient?.name || "Unknown");
+    const patientCondition = String(call.vitals_data?.PatientCondition || patient?.condition || "N/A");
+    const patientAge = String(call.vitals_data?.PatientAge || "");
+    const doctorOnFile = String(call.vitals_data?.DoctorEmail || "").trim();
+
+    const pdfBuffer = await generateReportPdfBuffer({
+      callId: String(call.id),
+      patientName,
+      patientCondition,
+      patientAge,
+      durationSeconds: Number(call.duration_seconds || 0),
+      transcriptSnippet: effectiveCallTranscript(call),
+      report,
+      doctorEmail: doctorOnFile || undefined,
+    });
+    
+    const summary = String(call.vitals_data?.Summary || "See attached report.");
+    const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
+    const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
+
+    const { data, error } = await resend.emails.send({
+      from: "Vitals AI <onboarding@resend.dev>",
+      to: [email],
+      subject: `Clinical Report: ${patientName}`,
+      html: `
+        <h2>Vitals AI Clinical Report</h2>
+        <p><strong>Patient:</strong> ${patientName}</p>
+        <p><strong>Risk Level:</strong> ${riskLevel}</p>
+        <p><strong>Alert Type:</strong> ${alertType}</p>
+        <p><strong>Summary:</strong> ${summary}</p>
+        <p>Please find the detailed PDF report attached.</p>
+      `,
+      attachments: [
+        {
+          filename: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
+          content: pdfBuffer,
+        },
+      ],
+    });
+
+    if (error) {
+      console.error("[Resend] Failed to send email:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ ok: true, sentTo: email, resendId: data?.id });
+  } catch (e: any) {
+    console.error("[Email] manual send error:", e);
+    return res.status(500).json({ error: e?.message || "Internal error" });
+  }
+});
+
   const phoneNumberId = process.env.VAPI_PHONE_NUMBER_ID || "";
   const assistantId = process.env.VAPI_ASSISTANT_ID || process.env.VITE_VAPI_AGENT_ID || "";
   return res.json({
