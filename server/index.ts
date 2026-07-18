@@ -54,7 +54,7 @@ try {
     waClient = new WAClient({
       authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
       puppeteer: {
-        executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
       }
     });
