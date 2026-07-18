@@ -1200,6 +1200,7 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
   }
 });
 
+app.get("/api/debug/vapi-config", (_req, res) => {
   const phoneNumberId = process.env.VAPI_PHONE_NUMBER_ID || "";
   const assistantId = process.env.VAPI_ASSISTANT_ID || process.env.VITE_VAPI_AGENT_ID || "";
   return res.json({
