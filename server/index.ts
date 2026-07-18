@@ -13,7 +13,7 @@ import PDFDocument from "pdfkit";
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import nodemailer from "nodemailer";
+import * as SibApiV3Sdk from "@getbrevo/brevo";
 // WhatsApp — loaded via nodeRequire (whatsapp-web.js is CommonJS-only)
 // These are set after nodeRequire is defined below.
 let WAClient: any;
@@ -1117,10 +1117,9 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
       return res.status(400).json({ error: "A valid target email address is required." });
     }
 
-    const gmailUser = process.env.GMAIL_USER;
-    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-    if (!gmailUser || !gmailAppPassword) {
-      return res.status(503).json({ error: "Gmail credentials (GMAIL_USER, GMAIL_APP_PASSWORD) are not configured on the server." });
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (!brevoApiKey) {
+      return res.status(503).json({ error: "Brevo API key (BREVO_API_KEY) is not configured on the server." });
     }
 
     // Fetch the call
@@ -1168,30 +1167,31 @@ app.post("/api/calls/:callId/report/send-email", async (req, res) => {
     const riskLevel = String(call.vitals_data?.ReportData?.risk_level || "").toUpperCase();
     const alertType = String(call.vitals_data?.ReportData?.alert_type || "");
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: gmailUser, pass: gmailAppPassword },
-    });
+    // Send via Brevo HTTP API (works on Render free tier — uses HTTPS not SMTP)
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    const apiKey = apiInstance.authentications as any;
+    apiKey["apiKey"].apiKey = brevoApiKey;
 
-    await transporter.sendMail({
-      from: `"Vitals AI" <${gmailUser}>`,
-      to: email,
-      subject: `Clinical Report: ${patientName}`,
-      html: `
-        <h2>Vitals AI Clinical Report</h2>
-        <p><strong>Patient:</strong> ${patientName}</p>
-        <p><strong>Risk Level:</strong> ${riskLevel}</p>
-        <p><strong>Alert Type:</strong> ${alertType}</p>
-        <p><strong>Summary:</strong> ${summary}</p>
-        <p>Please find the detailed PDF report attached.</p>
-      `,
-      attachments: [
-        {
-          filename: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
-          content: pdfBuffer,
-        },
-      ],
-    });
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.subject = `Clinical Report: ${patientName}`;
+    sendSmtpEmail.htmlContent = `
+      <h2>Vitals AI Clinical Report</h2>
+      <p><strong>Patient:</strong> ${patientName}</p>
+      <p><strong>Risk Level:</strong> ${riskLevel}</p>
+      <p><strong>Alert Type:</strong> ${alertType}</p>
+      <p><strong>Summary:</strong> ${summary}</p>
+      <p>Please find the detailed PDF report attached.</p>
+    `;
+    sendSmtpEmail.sender = { name: "Vitals AI", email: process.env.BREVO_SENDER_EMAIL || "xyaminokiritox@gmail.com" };
+    sendSmtpEmail.to = [{ email }];
+    sendSmtpEmail.attachment = [
+      {
+        content: pdfBuffer.toString("base64"),
+        name: `${patientName.replace(/[^a-zA-Z0-9]/g, "_")}_Clinical_Report.pdf`,
+      },
+    ];
+
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
 
     return res.json({ ok: true, sentTo: email });
   } catch (e: any) {
@@ -1210,51 +1210,10 @@ app.get("/api/debug/vapi-config", (_req, res) => {
   });
 });
 
-app.get("/api/vapi/call/:callId", async (req, res) => {
-  try {
-    const { callId } = req.params;
-    const vapiApiKey = requireEnv("VAPI_API_KEY");
-    const resp = await fetch(`https://api.vapi.ai/call/${callId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${vapiApiKey}`,
-      },
-    });
-    const body = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      console.error("[CallStatus] provider error:", body);
-      return res.status(resp.status).json({
-        error: body?.message || "Failed to fetch call status",
-        provider: body,
-      });
-    }
-
-    const call = unwrapVapiCallResponse(body) || {};
-    const transcript = buildTranscriptFromVapiCall(call);
-    const durationSeconds = extractVapiDurationSeconds(call);
-    return res.json({
-      id: call.id,
-      status: call.status,
-      endedReason: call.endedReason || null,
-      transcript,
-      durationSeconds,
-      messages: Array.isArray(call.messages) ? call.messages : [],
-      customer: call.customer || null,
-      startedAt: call.startedAt || null,
-      endedAt: call.endedAt || null,
-      phoneCallProvider: call.phoneCallProvider || null,
-    });
-  } catch (e: any) {
-    console.error("[CallStatus] fatal error:", e);
-    return res.status(500).json({ error: e?.message || "Call status failed" });
-  }
-});
-
 /**
  * GET /api/vapi/call/:callId/transcript
  * Fetches a single call from Vapi and returns only the transcript text.
- * Uses the same helper functions as the rest of the Vapi integration —
- * does NOT affect any existing routes or the webhook pipeline.
+ * More specific route — must be defined BEFORE /:callId.
  */
 app.get("/api/vapi/call/:callId/transcript", async (req, res) => {
   try {
@@ -1306,6 +1265,46 @@ app.get("/api/vapi/call/:callId/transcript", async (req, res) => {
   } catch (e: any) {
     console.error("[TranscriptFetch] error:", e);
     return res.status(500).json({ error: e?.message || "Transcript fetch failed" });
+  }
+});
+
+app.get("/api/vapi/call/:callId", async (req, res) => {
+  try {
+    const { callId } = req.params;
+    const vapiApiKey = requireEnv("VAPI_API_KEY");
+    const resp = await fetch(`https://api.vapi.ai/call/${callId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${vapiApiKey}`,
+      },
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.error("[CallStatus] provider error:", body);
+      return res.status(resp.status).json({
+        error: body?.message || "Failed to fetch call status",
+        provider: body,
+      });
+    }
+
+    const call = unwrapVapiCallResponse(body) || {};
+    const transcript = buildTranscriptFromVapiCall(call);
+    const durationSeconds = extractVapiDurationSeconds(call);
+    return res.json({
+      id: call.id,
+      status: call.status,
+      endedReason: call.endedReason || null,
+      transcript,
+      durationSeconds,
+      messages: Array.isArray(call.messages) ? call.messages : [],
+      customer: call.customer || null,
+      startedAt: call.startedAt || null,
+      endedAt: call.endedAt || null,
+      phoneCallProvider: call.phoneCallProvider || null,
+    });
+  } catch (e: any) {
+    console.error("[CallStatus] fatal error:", e);
+    return res.status(500).json({ error: e?.message || "Call status failed" });
   }
 });
 

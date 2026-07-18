@@ -18,6 +18,7 @@
     "seed:fake-calls": "tsx scripts/backfill-fake-calls.ts"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
     "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
